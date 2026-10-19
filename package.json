@@ -8,7 +8,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "lint": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --fileParallelism false",
     "test:watch": "vitest"
   },
   "keywords": [

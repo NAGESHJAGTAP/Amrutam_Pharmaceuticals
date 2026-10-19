@@ -12,6 +12,8 @@ import { profileRoutes } from './modules/profiles/profile.routes.js';
 import { doctorRoutes } from './modules/doctors/doctor.routes.js';
 import { availabilityRoutes } from './modules/availability/availability.routes.js';
 import { consultationRoutes } from './modules/consultations/consultation.routes.js';
+import { prescriptionRoutes } from './modules/prescriptions/prescription.routes.js';
+import { paymentRoutes } from './modules/payments/payment.routes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -24,7 +26,15 @@ export const createApp = (): Express => {
     cors({
       origin: env.CORS_ORIGIN.includes(',') ? env.CORS_ORIGIN.split(',') : env.CORS_ORIGIN,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID', 'X-Request-ID', 'Idempotency-Key'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Correlation-ID',
+        'X-Request-ID',
+        'Idempotency-Key',
+        'X-Amrutam-Signature',
+        'X-Webhook-Signature',
+      ],
       credentials: true,
     })
   );
@@ -45,6 +55,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/doctors', doctorRoutes);
   app.use('/api/v1/availability', availabilityRoutes);
   app.use('/api/v1/consultations', consultationRoutes);
+  app.use('/api/v1/prescriptions', prescriptionRoutes);
+  app.use('/api/v1/payments', paymentRoutes);
 
   // 404 Catch-All Handler
   app.use((req, _res, next) => {

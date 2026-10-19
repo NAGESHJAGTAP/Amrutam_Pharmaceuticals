@@ -8,12 +8,18 @@ import { logger } from '../logging/logger.js';
  * Database-backed idempotency middleware for state-modifying requests.
  * Uses the Idempotency-Key header to ensure atomic, exactly-once execution semantics.
  */
-export const requireIdempotency = (operationName: string) => {
+export const idempotent = (
+  operationName: string,
+  options: { required?: boolean } = { required: true }
+) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
 
-    // If no key provided, write operations fail fast to prevent non-idempotent mutations
+    // If no key provided
     if (!idempotencyKey) {
+      if (options.required === false) {
+        return next();
+      }
       return next(
         new BadRequestError('Idempotency-Key header is required for this operation')
       );
@@ -122,3 +128,7 @@ export const requireIdempotency = (operationName: string) => {
     }
   };
 };
+
+export const requireIdempotency = (operationName: string) =>
+  idempotent(operationName, { required: true });
+

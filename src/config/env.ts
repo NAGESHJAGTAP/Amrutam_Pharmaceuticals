@@ -25,6 +25,8 @@ const envSchema = z.object({
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000), // 15 mins
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
+
+  PAYMENT_WEBHOOK_SECRET: z.string().min(16).default('dev_payment_webhook_secret_amrutam_2026_safe'),
 });
 
 const parseEnv = () => {

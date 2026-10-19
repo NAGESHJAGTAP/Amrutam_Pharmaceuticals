@@ -281,3 +281,16 @@ model OutboxEvent {
   @@index([status, createdAt])
   @@map("outbox_events")
 }
+
+model WebhookEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @unique @db.VarChar(128)
+  provider  String   @db.VarChar(64)
+  eventType String   @db.VarChar(64)
+  payload   Json     @db.JsonB
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([provider, eventType])
+  @@map("webhook_events")
+}
+
