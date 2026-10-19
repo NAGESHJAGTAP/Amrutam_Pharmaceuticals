@@ -4,7 +4,7 @@ import { redis } from '../../src/infrastructure/cache/redis.js';
 
 describe('Pre-Phase 4 Analysis: Discrete Slot Uniqueness vs. Interval Overlap Prevention', () => {
   beforeAll(async () => {
-    // Clean up any test slots from previous runs
+    // Clean up any test slots from previous runs of this file
     await prisma.consultation.deleteMany({
       where: { consultationNumber: { startsWith: 'CON-SLOT-TEST-' } },
     });
@@ -12,7 +12,7 @@ describe('Pre-Phase 4 Analysis: Discrete Slot Uniqueness vs. Interval Overlap Pr
       where: {
         OR: [
           { startTime: new Date('2026-11-01T14:00:00.000Z') },
-          { startTime: { gte: new Date('2028-01-01T00:00:00.000Z') } },
+          { startTime: new Date('2028-01-01T10:00:00.000Z') },
         ],
       },
     });
@@ -26,7 +26,7 @@ describe('Pre-Phase 4 Analysis: Discrete Slot Uniqueness vs. Interval Overlap Pr
       where: {
         OR: [
           { startTime: new Date('2026-11-01T14:00:00.000Z') },
-          { startTime: { gte: new Date('2028-01-01T00:00:00.000Z') } },
+          { startTime: new Date('2028-01-01T10:00:00.000Z') },
         ],
       },
     });

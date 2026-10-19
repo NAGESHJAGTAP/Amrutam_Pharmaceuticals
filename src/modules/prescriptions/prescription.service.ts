@@ -314,6 +314,22 @@ export class PrescriptionService {
         },
       });
 
+      // Transactional Outbox Event
+      await tx.outboxEvent.create({
+        data: {
+          aggregateType: 'Prescription',
+          aggregateId: prescriptionId,
+          eventType: 'prescription.finalized',
+          payload: {
+            prescriptionId,
+            consultationId: p.consultationId,
+            doctorId: doctor.id,
+            patientId: p.patientId,
+          },
+          status: 'PENDING',
+        },
+      });
+
       logger.info(
         { prescriptionId, consultationId: p.consultationId, actorUserId },
         'Prescription finalized and locked; consultation marked COMPLETED'

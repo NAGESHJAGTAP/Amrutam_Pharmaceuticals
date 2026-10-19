@@ -133,6 +133,24 @@ export class ConsultationService {
           },
         });
 
+        // 9. Transactional Outbox Event (committed in same transaction)
+        await tx.outboxEvent.create({
+          data: {
+            aggregateType: 'Consultation',
+            aggregateId: consultation.id,
+            eventType: 'consultation.booked',
+            payload: {
+              consultationId: consultation.id,
+              consultationNumber: consultation.consultationNumber,
+              patientId: patientUserId,
+              doctorId,
+              startTime: slot.startTime.toISOString(),
+              endTime: slot.endTime.toISOString(),
+            },
+            status: 'PENDING',
+          },
+        });
+
         logger.info(
           {
             consultationId: consultation.id,
@@ -227,6 +245,24 @@ export class ConsultationService {
           details: { reason, cancelledByRole: actorRole },
           ipAddress,
           correlationId,
+        },
+      });
+
+      // 5. Transactional Outbox Event
+      await tx.outboxEvent.create({
+        data: {
+          aggregateType: 'Consultation',
+          aggregateId: consultation.id,
+          eventType: 'consultation.cancelled',
+          payload: {
+            consultationId: consultation.id,
+            consultationNumber: consultation.consultationNumber,
+            patientId: consultation.patientId,
+            doctorId: consultation.doctorId,
+            reason,
+            cancelledByRole: actorRole,
+          },
+          status: 'PENDING',
         },
       });
 

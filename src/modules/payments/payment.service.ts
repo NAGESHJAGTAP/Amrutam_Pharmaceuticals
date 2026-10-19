@@ -157,6 +157,23 @@ export class PaymentService {
           },
         });
 
+        // Transactional Outbox Event
+        await tx.outboxEvent.create({
+          data: {
+            aggregateType: 'Payment',
+            aggregateId: currentPayment.id,
+            eventType,
+            payload: {
+              paymentId: currentPayment.id,
+              paymentReference,
+              amount: Number(currentPayment.amount),
+              currency: currentPayment.currency,
+              status: newStatus,
+            },
+            status: 'PENDING',
+          },
+        });
+
         logger.info(
           {
             paymentId: currentPayment.id,

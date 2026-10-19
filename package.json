@@ -23,6 +23,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "argon2": "^0.45.1",
+    "bullmq": "^6.3.17",
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",
     "express": "^5.3.0",
