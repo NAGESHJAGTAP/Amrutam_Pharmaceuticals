@@ -1,14 +1,10 @@
 import { PrismaClient, UserRole, UserStatus, DoctorVerificationStatus, SlotStatus, ConsultationStatus, PaymentStatus } from '@prisma/client';
-import crypto from 'node:crypto';
+import { PasswordUtil } from '../src/common/security/password.js';
 
 const prisma = new PrismaClient();
 
-/**
- * Deterministic salted hash for synthetic seed accounts in development.
- */
-function hashPassword(password: string): string {
-  const salt = 'amrutam_dev_salt_seed_2026';
-  return crypto.scryptSync(password, salt, 64).toString('hex');
+async function hashPassword(password: string): Promise<string> {
+  return await PasswordUtil.hash(password);
 }
 
 async function main() {
@@ -30,7 +26,7 @@ async function main() {
   console.log('🧹 Cleaned existing tables.');
 
   // 1. Seed Synthetic Admin User
-  const adminPasswordHash = hashPassword('AdminDevPass#2026!');
+  const adminPasswordHash = await hashPassword('AdminDevPass#2026!');
   const adminUser = await prisma.user.create({
     data: {
       email: 'admin.amrutam@synthetic.local',
@@ -50,7 +46,7 @@ async function main() {
   console.log('✅ Seeded Admin:', adminUser.email);
 
   // 2. Seed Synthetic Doctors
-  const doctorPasswordHash = hashPassword('DoctorDevPass#2026!');
+  const doctorPasswordHash = await hashPassword('DoctorDevPass#2026!');
 
   const doctorsData = [
     {
@@ -125,7 +121,7 @@ async function main() {
   }
 
   // 3. Seed Synthetic Patients
-  const patientPasswordHash = hashPassword('PatientDevPass#2026!');
+  const patientPasswordHash = await hashPassword('PatientDevPass#2026!');
 
   const patient1User = await prisma.user.create({
     data: {

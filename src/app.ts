@@ -7,6 +7,8 @@ import { httpLoggerMiddleware } from './common/middleware/http-logger.middleware
 import { errorHandlerMiddleware } from './common/middleware/error-handler.middleware.js';
 import { NotFoundError } from './common/errors/app-error.js';
 import { healthRoutes } from './modules/health/health.routes.js';
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { profileRoutes } from './modules/profiles/profile.routes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -35,6 +37,8 @@ export const createApp = (): Express => {
   // Base API routes
   app.use('/', healthRoutes);
   app.use('/api/v1', healthRoutes);
+  app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/profiles', profileRoutes);
 
   // 404 Catch-All Handler
   app.use((req, _res, next) => {
