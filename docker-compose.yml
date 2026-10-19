@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: amrutam_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-amrutam_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-amrutam_secret_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-amrutam_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amrutam_user -d amrutam_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - amrutam_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: amrutam_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - amrutam_network
+
+volumes:
+  postgres_data:
+    name: amrutam_postgres_data
+  redis_data:
+    name: amrutam_redis_data
+
+networks:
+  amrutam_network:
+    name: amrutam_network
+    driver: bridge

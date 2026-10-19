@@ -1,0 +1,282 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum DoctorVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum SlotStatus {
+  AVAILABLE
+  RESERVED
+  CANCELLED
+}
+
+enum ConsultationStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+// ==========================================
+// MODELS
+// ==========================================
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique @db.VarChar(255)
+  phone        String?     @unique @db.VarChar(32)
+  passwordHash String      @db.VarChar(255)
+  role         UserRole    @default(PATIENT)
+  status       UserStatus  @default(ACTIVE)
+  mfaEnabled   Boolean     @default(false)
+  mfaSecret    String?     @db.VarChar(255)
+  createdAt    DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  profile               Profile?
+  doctor                Doctor?
+  consultationsAsPatient Consultation[] @relation("PatientConsultations")
+  prescriptionsReceived Prescription[] @relation("PatientPrescriptions")
+  refreshTokens         RefreshToken[]
+  auditLogs             AuditLog[]
+
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model Profile {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @unique @db.Uuid
+  firstName        String    @db.VarChar(100)
+  lastName         String    @db.VarChar(100)
+  dateOfBirth      DateTime? @db.Date
+  gender           String?   @db.VarChar(32)
+  emergencyContact String?   @db.VarChar(100)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Doctor {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  userId             String                   @unique @db.Uuid
+  licenseNumber      String                   @unique @db.VarChar(100)
+  specialty          String                   @db.VarChar(100)
+  experienceYears    Int                      @default(0)
+  consultationFee    Decimal                  @default(500.00) @db.Decimal(10, 2)
+  currency           String                   @default("INR") @db.VarChar(10)
+  bio                String?                  @db.Text
+  verificationStatus DoctorVerificationStatus @default(PENDING)
+  createdAt          DateTime                 @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime                 @updatedAt @db.Timestamptz(6)
+
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availabilitySlots     AvailabilitySlot[]
+  consultationsAsDoctor Consultation[]     @relation("DoctorConsultations")
+  prescriptionsIssued   Prescription[]     @relation("DoctorPrescriptions")
+
+  @@index([specialty])
+  @@index([verificationStatus])
+  @@map("doctors")
+}
+
+model AvailabilitySlot {
+  id        String     @id @default(uuid()) @db.Uuid
+  doctorId  String     @db.Uuid
+  startTime DateTime   @db.Timestamptz(6)
+  endTime   DateTime   @db.Timestamptz(6)
+  status    SlotStatus @default(AVAILABLE)
+  createdAt DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @db.Timestamptz(6)
+
+  doctor       Doctor        @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  consultation Consultation?
+
+  // Prevents the same doctor from having two slots starting at the exact same time
+  @@unique([doctorId, startTime], name: "unique_doctor_slot_start")
+  @@index([doctorId, status])
+  @@index([startTime, endTime])
+  @@map("availability_slots")
+}
+
+model Consultation {
+  id                 String             @id @default(uuid()) @db.Uuid
+  consultationNumber String             @unique @db.VarChar(64)
+  patientId          String             @db.Uuid
+  doctorId           String             @db.Uuid
+  slotId             String             @unique @db.Uuid // Strict 1:1 database constraint prevents double booking
+  status             ConsultationStatus @default(SCHEDULED)
+  reason             String?            @db.VarChar(500)
+  notes              String?            @db.Text
+  startTime          DateTime           @db.Timestamptz(6)
+  endTime            DateTime           @db.Timestamptz(6)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(6)
+
+  patient       User             @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
+  doctor        Doctor           @relation("DoctorConsultations", fields: [doctorId], references: [id], onDelete: Restrict)
+  slot          AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  prescriptions Prescription[]
+  payment       Payment?
+
+  @@index([patientId, status])
+  @@index([doctorId, status])
+  @@index([startTime])
+  @@map("consultations")
+}
+
+model Prescription {
+  id             String   @id @default(uuid()) @db.Uuid
+  consultationId String   @db.Uuid
+  doctorId       String   @db.Uuid
+  patientId      String   @db.Uuid
+  diagnosis      String   @db.Text
+  medications    Json     @db.JsonB
+  advice         String?  @db.Text
+  isFinalized    Boolean  @default(false)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  doctor       Doctor       @relation("DoctorPrescriptions", fields: [doctorId], references: [id], onDelete: Restrict)
+  patient      User         @relation("PatientPrescriptions", fields: [patientId], references: [id], onDelete: Restrict)
+
+  @@index([consultationId])
+  @@index([patientId])
+  @@index([doctorId])
+  @@map("prescriptions")
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  consultationId    String        @unique @db.Uuid
+  paymentReference  String        @unique @db.VarChar(128)
+  providerReference String?       @unique @db.VarChar(128)
+  provider          String        @default("MOCK_GATEWAY") @db.VarChar(64)
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR") @db.VarChar(10)
+  status            PaymentStatus @default(PENDING)
+  rawResponse       Json?         @db.JsonB
+  createdAt         DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(6)
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([paymentReference])
+  @@map("payments")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  actorId       String?  @db.Uuid
+  action        String   @db.VarChar(100)
+  entityType    String   @db.VarChar(100)
+  entityId      String?  @db.VarChar(128)
+  details       Json?    @db.JsonB
+  ipAddress     String?  @db.VarChar(64)
+  userAgent     String?  @db.VarChar(255)
+  correlationId String?  @db.VarChar(128)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model RefreshToken {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @db.Uuid
+  tokenHash           String   @unique @db.VarChar(255)
+  isRevoked           Boolean  @default(false)
+  expiresAt           DateTime @db.Timestamptz(6)
+  replacedByTokenHash String?  @db.VarChar(255)
+  createdAt           DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model IdempotencyRecord {
+  id             String    @id @default(uuid()) @db.Uuid
+  idempotencyKey String    @unique @db.VarChar(255)
+  actorId        String    @db.Uuid
+  operation      String    @db.VarChar(100)
+  requestHash    String    @db.VarChar(64)
+  responseStatus Int?
+  responseBody   Json?     @db.JsonB
+  lockedUntil    DateTime  @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([actorId, operation])
+  @@index([lockedUntil])
+  @@map("idempotency_records")
+}
+
+model OutboxEvent {
+  id            String       @id @default(uuid()) @db.Uuid
+  aggregateType String       @db.VarChar(100)
+  aggregateId   String       @db.VarChar(128)
+  eventType     String       @db.VarChar(100)
+  payload       Json         @db.JsonB
+  status        OutboxStatus @default(PENDING)
+  retryCount    Int          @default(0)
+  lastError     String?      @db.Text
+  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([status, createdAt])
+  @@map("outbox_events")
+}

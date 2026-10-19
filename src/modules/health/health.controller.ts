@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
+import { checkDatabaseHealth } from '../../infrastructure/database/prisma.js';
+import { checkRedisHealth } from '../../infrastructure/cache/redis.js';
 
 export class HealthController {
   /**
-   * Liveness probe: returns 200 OK as long as the process is alive.
+   * Liveness probe: returns 200 OK as long as the HTTP event loop is alive.
    */
   public getLiveness = (_req: Request, res: Response): void => {
     res.status(200).json({
@@ -13,14 +15,24 @@ export class HealthController {
   };
 
   /**
-   * Readiness probe: checks dependencies (e.g. DB connection in later phases).
+   * Readiness probe: actively queries PostgreSQL and Redis.
+   * Returns 200 OK if all dependencies are healthy, or 503 Service Unavailable if unhealthy.
    */
-  public getReadiness = (_req: Request, res: Response): void => {
-    // In Phase 1, the app is ready once booted. DB/Redis readiness check hooks in Phase 2.
-    res.status(200).json({
-      status: 'READY',
+  public getReadiness = async (_req: Request, res: Response): Promise<void> => {
+    const [dbHealth, redisHealth] = await Promise.all([
+      checkDatabaseHealth(),
+      checkRedisHealth(),
+    ]);
+
+    const isHealthy = dbHealth.status === 'UP' && redisHealth.status === 'UP';
+    const statusCode = isHealthy ? 200 : 503;
+
+    res.status(statusCode).json({
+      status: isHealthy ? 'READY' : 'NOT_READY',
       checks: {
         server: 'UP',
+        database: dbHealth,
+        redis: redisHealth,
       },
       timestamp: new Date().toISOString(),
     });

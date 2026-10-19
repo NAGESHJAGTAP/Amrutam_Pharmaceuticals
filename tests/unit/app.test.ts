@@ -43,6 +43,13 @@ describe('Application Foundation & Health Probes', () => {
     expect(res.status).toBe(200);
     expect(res.headers['x-correlation-id']).toBe(customCorrelationId);
   });
+
+  afterAll(async () => {
+    const { prisma } = await import('../../src/infrastructure/database/prisma.js');
+    const { redis } = await import('../../src/infrastructure/cache/redis.js');
+    await prisma.$disconnect();
+    await redis.quit();
+  });
 });
 
 describe('Validation Middleware & Error Handler', () => {
