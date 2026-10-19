@@ -132,8 +132,8 @@ model AvailabilitySlot {
   createdAt DateTime   @default(now()) @db.Timestamptz(6)
   updatedAt DateTime   @updatedAt @db.Timestamptz(6)
 
-  doctor       Doctor        @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  consultation Consultation?
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  consultations Consultation[]
 
   // Prevents the same doctor from having two slots starting at the exact same time
   @@unique([doctorId, startTime], name: "unique_doctor_slot_start")
@@ -147,7 +147,7 @@ model Consultation {
   consultationNumber String             @unique @db.VarChar(64)
   patientId          String             @db.Uuid
   doctorId           String             @db.Uuid
-  slotId             String             @unique @db.Uuid // Strict 1:1 database constraint prevents double booking
+  slotId             String             @db.Uuid
   status             ConsultationStatus @default(SCHEDULED)
   reason             String?            @db.VarChar(500)
   notes              String?            @db.Text
@@ -162,6 +162,7 @@ model Consultation {
   prescriptions Prescription[]
   payment       Payment?
 
+  @@index([slotId])
   @@index([patientId, status])
   @@index([doctorId, status])
   @@index([startTime])

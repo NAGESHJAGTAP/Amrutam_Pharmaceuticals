@@ -1,9 +1,35 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../src/infrastructure/database/prisma.js';
 import { redis } from '../../src/infrastructure/cache/redis.js';
 
 describe('Pre-Phase 4 Analysis: Discrete Slot Uniqueness vs. Interval Overlap Prevention', () => {
+  beforeAll(async () => {
+    // Clean up any test slots from previous runs
+    await prisma.consultation.deleteMany({
+      where: { consultationNumber: { startsWith: 'CON-SLOT-TEST-' } },
+    });
+    await prisma.availabilitySlot.deleteMany({
+      where: {
+        OR: [
+          { startTime: new Date('2026-11-01T14:00:00.000Z') },
+          { startTime: { gte: new Date('2028-01-01T00:00:00.000Z') } },
+        ],
+      },
+    });
+  });
+
   afterAll(async () => {
+    await prisma.consultation.deleteMany({
+      where: { consultationNumber: { startsWith: 'CON-SLOT-TEST-' } },
+    });
+    await prisma.availabilitySlot.deleteMany({
+      where: {
+        OR: [
+          { startTime: new Date('2026-11-01T14:00:00.000Z') },
+          { startTime: { gte: new Date('2028-01-01T00:00:00.000Z') } },
+        ],
+      },
+    });
     await prisma.$disconnect();
     await redis.quit();
   });
@@ -19,12 +45,12 @@ describe('Pre-Phase 4 Analysis: Discrete Slot Uniqueness vs. Interval Overlap Pr
       where: { role: 'PATIENT', id: { not: patient1!.id } },
     });
 
-    const now = new Date();
+    const testStartTime = new Date('2028-01-01T10:00:00.000Z');
     const slot = await prisma.availabilitySlot.create({
       data: {
         doctorId: doctor!.id,
-        startTime: new Date(now.getTime() + 1000000),
-        endTime: new Date(now.getTime() + 1000000 + 1800000),
+        startTime: testStartTime,
+        endTime: new Date('2028-01-01T10:30:00.000Z'),
         status: 'AVAILABLE',
       },
     });
@@ -62,9 +88,9 @@ describe('Pre-Phase 4 Analysis: Discrete Slot Uniqueness vs. Interval Overlap Pr
     }
 
     expect(error).not.toBeNull();
-    // Prisma maps Postgres 23505 unique constraint violation on slotId to P2002
+    // Prisma maps Postgres 23505 unique constraint violation to P2002
     expect(error.code).toBe('P2002');
-    expect(error.meta.target).toContain('slotId');
+    expect(JSON.stringify(error.meta)).toMatch(/slotId|unique_active_consultation_slot/);
   });
 
   /**

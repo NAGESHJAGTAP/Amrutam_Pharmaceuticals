@@ -167,18 +167,16 @@ async function main() {
   tomorrow.setUTCHours(9, 0, 0, 0); // 09:00 UTC
 
   const slot1Start = new Date(tomorrow);
-  const slot1End = new Date(tomorrow);
-  slot1End.setUTCMinutes(30); // 09:00 - 09:30 UTC
+  const slot1End = new Date(slot1Start);
+  slot1End.setUTCMinutes(slot1End.getUTCMinutes() + 30); // 09:00 - 09:30 UTC
 
-  const slot2Start = new Date(tomorrow);
-  slot2Start.setUTCMinutes(30);
-  const slot2End = new Date(tomorrow);
-  slot2End.setUTCHours(10, 0, 0, 0); // 09:30 - 10:00 UTC
+  const slot2Start = new Date(slot1End); // 09:30 UTC
+  const slot2End = new Date(slot2Start);
+  slot2End.setUTCMinutes(slot2End.getUTCMinutes() + 30); // 09:30 - 10:00 UTC
 
-  const slot3Start = new Date(tomorrow);
-  slot3Start.setUTCHours(10, 0, 0, 0);
-  const slot3End = new Date(tomorrow);
-  slot3End.setUTCMinutes(30); // 10:00 - 10:30 UTC
+  const slot3Start = new Date(slot2End); // 10:00 UTC
+  const slot3End = new Date(slot3Start);
+  slot3End.setUTCMinutes(slot3End.getUTCMinutes() + 30); // 10:00 - 10:30 UTC
 
   const createdSlot1 = await prisma.availabilitySlot.create({
     data: {
