@@ -1,0 +1,537 @@
+openapi: 3.1.0
+info:
+  title: Amrutam Pharmaceuticals Telemedicine API
+  description: >
+    Production-grade telemedicine backend engineered with Node.js, Express 5, TypeScript,
+    PostgreSQL 16, Redis 7, Prisma ORM, BullMQ, and OpenTelemetry.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000
+    description: Local Development Server
+
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      description: Returns 200 OK with system uptime and process memory statistics.
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivenessResponse'
+
+  /readyz:
+    get:
+      summary: Readiness probe
+      description: Actively probes PostgreSQL and Redis with 2500ms bounded timeout.
+      responses:
+        '200':
+          description: All dependencies operational (READY)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+        '503':
+          description: Downstream dependency unavailable (NOT_READY)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Exposes Prometheus exposition format. Protected via METRICS_AUTH_TOKEN if configured.
+      security:
+        - MetricsAuth: []
+        - {}
+      responses:
+        '200':
+          description: Plaintext Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized scrape request
+
+  /api/v1/auth/register:
+    post:
+      summary: Register new patient
+      description: Creates a new user account strictly with PATIENT role. Passwords hashed using Argon2id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Patient registered successfully
+        '409':
+          description: Email already in use
+        '422':
+          description: Validation error
+
+  /api/v1/auth/login:
+    post:
+      summary: Authenticate user
+      description: Validates email and password against Argon2id hash. If MFA is enabled, returns pre-auth challenge.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid email or password
+
+  /api/v1/auth/refresh:
+    post:
+      summary: Rotate refresh token
+      description: Issues new token pair using single-use Refresh Token Rotation (RTR). Detects token reuse.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: New token pair issued
+        '401':
+          description: Token revoked or invalid
+
+  /api/v1/auth/logout:
+    post:
+      summary: Revoke session
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Session terminated
+
+  /api/v1/auth/mfa/setup:
+    post:
+      summary: Initiate TOTP MFA setup
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Returns TOTP secret and otpauth QR URI
+
+  /api/v1/auth/mfa/verify:
+    post:
+      summary: Verify TOTP MFA code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  example: '123456'
+                preAuthToken:
+                  type: string
+      responses:
+        '200':
+          description: MFA confirmed and tokens issued
+
+  /api/v1/auth/change-password:
+    post:
+      summary: Change password
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        '200':
+          description: Password updated; other active sessions revoked
+
+  /api/v1/doctors:
+    get:
+      summary: Search verified doctors
+      parameters:
+        - in: query
+          name: specialty
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of verified doctors
+
+  /api/v1/doctors/{id}:
+    get:
+      summary: Get doctor profile
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Doctor details
+        '404':
+          description: Doctor not found
+
+  /api/v1/doctors/{id}/availability:
+    get:
+      summary: List doctor availability slots
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Available slots
+
+  /api/v1/availability:
+    post:
+      summary: Create availability slots
+      security:
+        - BearerAuth: []
+      description: Doctor-only endpoint to define slots. Rejects overlapping intervals.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [startTime, endTime]
+              properties:
+                startTime:
+                  type: string
+                  format: date-time
+                endTime:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Slot created
+        '409':
+          description: Overlapping slot interval
+
+  /api/v1/consultations:
+    post:
+      summary: Book consultation
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slotId, doctorId, feeAmount]
+              properties:
+                slotId:
+                  type: string
+                  format: uuid
+                doctorId:
+                  type: string
+                  format: uuid
+                feeAmount:
+                  type: number
+                  example: 600.00
+      responses:
+        '201':
+          description: Consultation booked (or replayed idempotent response)
+        '409':
+          description: Slot already reserved or idempotency conflict
+
+    get:
+      summary: List user consultations
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User consultation history
+
+  /api/v1/consultations/{id}:
+    get:
+      summary: Get consultation details
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Consultation record
+        '403':
+          description: Forbidden (IDOR / BOLA defense)
+
+  /api/v1/prescriptions:
+    post:
+      summary: Draft prescription
+      security:
+        - BearerAuth: []
+      description: Doctor-only endpoint. Authorized doctor must be assigned to the consultation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePrescriptionRequest'
+      responses:
+        '201':
+          description: Prescription drafted
+
+  /api/v1/prescriptions/{id}:
+    get:
+      summary: View prescription
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prescription details
+        '403':
+          description: Forbidden
+
+  /api/v1/prescriptions/{id}/finalize:
+    post:
+      summary: Finalize prescription
+      security:
+        - BearerAuth: []
+      description: Locks prescription permanently. Once finalized, further modifications are rejected.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prescription finalized and locked
+
+  /api/v1/payments/webhook:
+    post:
+      summary: Payment provider webhook intake
+      description: Verifies HMAC-SHA256 signature using timingSafeEqual. Deduplicates events via WebhookEvent table.
+      parameters:
+        - in: header
+          name: X-Webhook-Signature
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPayload'
+      responses:
+        '200':
+          description: Webhook processed or duplicate acknowledged
+        '401':
+          description: Invalid HMAC signature
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    MetricsAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    LivenessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: 'UP'
+        uptime:
+          type: number
+        uptimeSeconds:
+          type: integer
+        memory:
+          type: object
+          properties:
+            heapUsedMb:
+              type: number
+            heapTotalMb:
+              type: number
+            rssMb:
+              type: number
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ['READY', 'NOT_READY']
+        checks:
+          type: object
+          properties:
+            server:
+              type: string
+            database:
+              type: object
+            redis:
+              type: object
+
+    RegisterRequest:
+      type: object
+      required: [email, password, firstName, lastName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            user:
+              type: object
+            tokens:
+              type: object
+              properties:
+                accessToken:
+                  type: string
+                refreshToken:
+                  type: string
+
+    CreatePrescriptionRequest:
+      type: object
+      required: [consultationId, medications]
+      properties:
+        consultationId:
+          type: string
+          format: uuid
+        instructions:
+          type: string
+        medications:
+          type: array
+          items:
+            type: object
+            required: [name, dosage, frequency, duration]
+            properties:
+              name:
+                type: string
+              dosage:
+                type: string
+              frequency:
+                type: string
+              duration:
+                type: string
+              notes:
+                type: string
+
+    WebhookPayload:
+      type: object
+      required: [eventId, eventType, timestamp, data]
+      properties:
+        eventId:
+          type: string
+        eventType:
+          type: string
+          enum: ['payment.succeeded', 'payment.failed', 'payment.refunded']
+        timestamp:
+          type: string
+        data:
+          type: object
+          properties:
+            paymentReference:
+              type: string
+            providerReference:
+              type: string
+            amount:
+              type: number
+            currency:
+              type: string
