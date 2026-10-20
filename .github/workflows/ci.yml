@@ -1,0 +1,82 @@
+name: Amrutam Telemedicine Backend CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  validate-and-test:
+    name: Lint, Test & Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: amrutam_user
+          POSTGRES_PASSWORD: amrutam_secret_pw
+          POSTGRES_DB: amrutam_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      PORT: 4000
+      DATABASE_URL: "postgresql://amrutam_user:amrutam_secret_pw@localhost:5432/amrutam_db?schema=public"
+      REDIS_URL: "redis://localhost:6379"
+      JWT_ACCESS_SECRET: "ci-test-jwt-access-secret-32-chars-long"
+      JWT_REFRESH_SECRET: "ci-test-jwt-refresh-secret-32-chars-long"
+      PAYMENT_WEBHOOK_SECRET: "ci-test-webhook-secret-32-chars-long"
+      CORS_ORIGIN: "*"
+      TRUST_PROXY: "false"
+      RATE_LIMIT_POLICY: "FAIL_CLOSED"
+      OTEL_ENABLED: "false"
+      METRICS_ENABLED: "true"
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Strict TypeScript Compilation Check (Lint)
+        run: npm run lint
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Execute Database Migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed Database with Synthetic Data
+        run: npm run seed
+
+      - name: Run Test Suites
+        run: npm test
+
+      - name: Compile Production Build
+        run: npm run build
