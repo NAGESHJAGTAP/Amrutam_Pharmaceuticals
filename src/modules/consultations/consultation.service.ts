@@ -9,6 +9,7 @@ import {
 import { BookConsultationInput } from './consultation.schema.js';
 import crypto from 'node:crypto';
 import { logger } from '../../common/logging/logger.js';
+import { consultationsBookedTotal } from '../../infrastructure/telemetry/metrics.js';
 
 export class ConsultationService {
   /**
@@ -51,6 +52,7 @@ export class ConsultationService {
 
         // 4. Validate slot availability status
         if (slot.status !== SlotStatus.AVAILABLE) {
+          consultationsBookedTotal.inc({ status: 'conflict' });
           throw new ConflictError(
             'The requested availability slot has already been reserved or cancelled'
           );
@@ -110,6 +112,7 @@ export class ConsultationService {
           });
         } catch (error: any) {
           if (error.code === 'P2002') {
+            consultationsBookedTotal.inc({ status: 'conflict' });
             throw new ConflictError('The requested availability slot has already been reserved');
           }
           throw error;
@@ -150,6 +153,8 @@ export class ConsultationService {
             status: 'PENDING',
           },
         });
+
+        consultationsBookedTotal.inc({ status: 'success' });
 
         logger.info(
           {

@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
+import { trace } from '@opentelemetry/api';
 import { logger } from '../logging/logger.js';
 
 /**
  * Middleware to log structured HTTP access events.
- * Logs method, URL, status code, and latency in milliseconds with correlation IDs.
+ * Logs method, URL, status code, and latency in milliseconds with correlation IDs and trace context.
  */
 export const httpLoggerMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const startTime = process.hrtime.bigint();
@@ -11,6 +12,9 @@ export const httpLoggerMiddleware = (req: Request, res: Response, next: NextFunc
   res.on('finish', () => {
     const endTime = process.hrtime.bigint();
     const durationMs = Number(endTime - startTime) / 1_000_000;
+    const activeSpan = trace.getActiveSpan();
+    const traceId = activeSpan?.spanContext().traceId;
+    const spanId = activeSpan?.spanContext().spanId;
 
     const logData = {
       method: req.method,
@@ -19,6 +23,8 @@ export const httpLoggerMiddleware = (req: Request, res: Response, next: NextFunc
       durationMs: parseFloat(durationMs.toFixed(2)),
       correlationId: req.correlationId,
       requestId: req.requestId,
+      ...(traceId && { traceId }),
+      ...(spanId && { spanId }),
       ip: req.ip,
       userAgent: req.get('user-agent'),
     };

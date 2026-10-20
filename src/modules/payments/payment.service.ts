@@ -8,6 +8,7 @@ import {
 } from '../../common/errors/app-error.js';
 import { WebhookEventPayload } from './simulated-gateway.js';
 import { logger } from '../../common/logging/logger.js';
+import { paymentsProcessedTotal } from '../../infrastructure/telemetry/metrics.js';
 
 export class PaymentService {
   /**
@@ -173,6 +174,8 @@ export class PaymentService {
             status: 'PENDING',
           },
         });
+
+        paymentsProcessedTotal.inc({ event_type: eventType, status: newStatus });
 
         logger.info(
           {

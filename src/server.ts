@@ -1,3 +1,8 @@
+import { initTelemetry, shutdownTelemetry } from './infrastructure/telemetry/tracer.js';
+
+// Initialize OpenTelemetry distributed tracing prior to application initialization
+initTelemetry();
+
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './common/logging/logger.js';
@@ -17,15 +22,22 @@ const server: Server = app.listen(env.PORT, env.HOST, () => {
 });
 
 // Graceful shutdown handling
-const handleGracefulShutdown = (signal: string) => {
+const handleGracefulShutdown = async (signal: string) => {
   logger.info({ signal }, `Received ${signal}. Initiating graceful shutdown...`);
 
-  server.close((err) => {
+  server.close(async (err) => {
     if (err) {
       logger.error({ err }, 'Error occurred while closing HTTP server');
       process.exit(1);
     }
-    logger.info('HTTP server closed cleanly. Exiting process.');
+
+    try {
+      await shutdownTelemetry();
+    } catch (shutdownErr: any) {
+      logger.error({ error: shutdownErr.message }, 'Error shutting down telemetry');
+    }
+
+    logger.info('HTTP server and telemetry closed cleanly. Exiting process.');
     process.exit(0);
   });
 

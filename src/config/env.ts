@@ -25,8 +25,17 @@ const envSchema = z.object({
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000), // 15 mins
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
+  RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),
+  TRUST_PROXY: z.string().default('false'),
 
   PAYMENT_WEBHOOK_SECRET: z.string().min(16).default('dev_payment_webhook_secret_amrutam_2026_safe'),
+
+  // Observability & Telemetry (OpenTelemetry & Prometheus)
+  OTEL_ENABLED: z.coerce.boolean().default(false),
+  OTEL_SERVICE_NAME: z.string().default('amrutam-telemedicine-backend'),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
+  METRICS_ENABLED: z.coerce.boolean().default(true),
+  METRICS_AUTH_TOKEN: z.string().optional(),
 });
 
 const parseEnv = () => {

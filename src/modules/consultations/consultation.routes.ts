@@ -3,10 +3,13 @@ import { consultationController } from './consultation.controller.js';
 import { authenticate, authorize } from '../../common/middleware/auth.middleware.js';
 import { validate } from '../../common/middleware/validate.middleware.js';
 import { requireIdempotency } from '../../common/middleware/idempotency.middleware.js';
+import { bookingRateLimiter } from '../../common/middleware/rate-limit.middleware.js';
 import {
   bookConsultationSchema,
   cancelConsultationSchema,
   getConsultationByIdSchema,
+  listMyBookingsSchema,
+  getDoctorScheduleSchema,
 } from './consultation.schema.js';
 import { UserRole } from '@prisma/client';
 
@@ -16,6 +19,7 @@ router.post(
   '/book',
   authenticate,
   authorize([UserRole.PATIENT, UserRole.ADMIN]),
+  bookingRateLimiter,
   requireIdempotency('BOOK_CONSULTATION'),
   validate(bookConsultationSchema),
   consultationController.bookConsultation
@@ -29,12 +33,13 @@ router.post(
   consultationController.cancelConsultation
 );
 
-router.get('/my-bookings', authenticate, consultationController.getMyBookings);
+router.get('/my-bookings', authenticate, validate(listMyBookingsSchema), consultationController.getMyBookings);
 
 router.get(
   '/doctor-schedule',
   authenticate,
   authorize([UserRole.DOCTOR, UserRole.ADMIN]),
+  validate(getDoctorScheduleSchema),
   consultationController.getDoctorSchedule
 );
 

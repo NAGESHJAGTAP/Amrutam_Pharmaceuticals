@@ -1,0 +1,220 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "System Health & Infrastructure Availability",
+      "type": "row"
+    },
+    {
+      "id": 2,
+      "title": "PostgreSQL Health",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "amrutam_database_health_status",
+          "legendFormat": "Database (1=UP, 0=DOWN)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Redis Health",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "targets": [
+        {
+          "expr": "amrutam_redis_health_status",
+          "legendFormat": "Redis (1=UP, 0=DOWN)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Outbox Pending Backlog",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "amrutam_outbox_backlog_count",
+          "legendFormat": "Events Pending"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 20 }, { "color": "red", "value": 100 }] }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Process Memory (RSS)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes",
+          "legendFormat": "RSS Memory"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 6,
+      "title": "HTTP Traffic & Latency",
+      "type": "row"
+    },
+    {
+      "id": 7,
+      "title": "HTTP Request Throughput (Req/sec)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "sum(rate(amrutam_http_requests_total[1m])) by (method, route, status_code)",
+          "legendFormat": "{{method}} {{route}} ({{status_code}})"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "HTTP Latency Quantiles (p50, p95, p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(amrutam_http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p50 (Median)"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(amrutam_http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(amrutam_http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 9,
+      "title": "Security, Errors & Rate Limiting",
+      "type": "row"
+    },
+    {
+      "id": 10,
+      "title": "Rate Limit Rejections (429)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "targets": [
+        {
+          "expr": "sum(rate(amrutam_rate_limit_rejections_total[1m])) by (endpoint_type)",
+          "legendFormat": "Rejected: {{endpoint_type}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "HTTP 4xx & 5xx Error Rates",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "targets": [
+        {
+          "expr": "sum(rate(amrutam_http_requests_total{status_code=~\"5..\"}[1m])) by (route)",
+          "legendFormat": "5xx: {{route}}"
+        },
+        {
+          "expr": "sum(rate(amrutam_http_requests_total{status_code=~\"4..\"}[1m])) by (route)",
+          "legendFormat": "4xx: {{route}}"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 12,
+      "title": "Background Jobs & Telemedicine Activity",
+      "type": "row"
+    },
+    {
+      "id": 13,
+      "title": "BullMQ Job Processing Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum(rate(amrutam_background_jobs_total[1m])) by (queue, status)",
+          "legendFormat": "Job {{queue}} [{{status}}]"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Telemedicine Core Business Metrics",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum(rate(amrutam_consultations_booked_total[1m])) by (status)",
+          "legendFormat": "Bookings ({{status}})"
+        },
+        {
+          "expr": "sum(rate(amrutam_prescriptions_finalized_total[1m]))",
+          "legendFormat": "Prescriptions Finalized"
+        },
+        {
+          "expr": "sum(rate(amrutam_payments_processed_total[1m])) by (status)",
+          "legendFormat": "Payments ({{status}})"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["amrutam", "telemedicine", "production"],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "title": "Amrutam Telemedicine - Production Observability",
+  "uid": "amrutam-telemedicine-overview"
+}

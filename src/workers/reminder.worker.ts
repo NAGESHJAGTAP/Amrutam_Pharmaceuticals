@@ -11,6 +11,7 @@ import { notificationService } from '../modules/notifications/notification.servi
 import { prisma } from '../infrastructure/database/prisma.js';
 import { logger } from '../common/logging/logger.js';
 import { ConsultationStatus } from '@prisma/client';
+import { backgroundJobsTotal } from '../infrastructure/telemetry/metrics.js';
 
 /**
  * BullMQ Worker responsible for processing delayed consultation reminder jobs.
@@ -110,10 +111,12 @@ export const createReminderWorker = () => {
   );
 
   worker.on('completed', (job: Job) => {
+    backgroundJobsTotal.inc({ queue_name: QUEUE_NAMES.REMINDERS, status: 'completed' });
     logger.debug({ jobId: job.id }, 'Reminder job completed');
   });
 
   worker.on('failed', (job: Job | undefined, err: Error) => {
+    backgroundJobsTotal.inc({ queue_name: QUEUE_NAMES.REMINDERS, status: 'failed' });
     logger.error(
       {
         jobId: job?.id,

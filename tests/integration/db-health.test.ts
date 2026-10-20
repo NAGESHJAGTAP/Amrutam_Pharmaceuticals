@@ -40,8 +40,31 @@ describe('Phase 2 Integration: Database & Redis Readiness', () => {
   });
 
   it('verifies database-enforced anti-double-booking constraint on AvailabilitySlot', async () => {
-    // 1. Fetch the already reserved consultation slot
-    const existingConsultation = await prisma.consultation.findFirst();
+    // 1. Fetch the already reserved consultation slot or create a designated slot for testing
+    let existingConsultation = await prisma.consultation.findFirst();
+    if (!existingConsultation) {
+      const doctor = await prisma.doctor.findFirst();
+      const patient = await prisma.user.findFirst({ where: { role: 'PATIENT' } });
+      const slot = await prisma.availabilitySlot.create({
+        data: {
+          doctorId: doctor!.id,
+          startTime: new Date(Date.now() + 86400000),
+          endTime: new Date(Date.now() + 86400000 + 3600000),
+          status: 'RESERVED',
+        },
+      });
+      existingConsultation = await prisma.consultation.create({
+        data: {
+          consultationNumber: `HEALTH-TEST-${Date.now()}`,
+          patientId: patient!.id,
+          doctorId: doctor!.id,
+          slotId: slot.id,
+          status: 'SCHEDULED',
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        },
+      });
+    }
     expect(existingConsultation).not.toBeNull();
 
     // 2. Fetch another patient

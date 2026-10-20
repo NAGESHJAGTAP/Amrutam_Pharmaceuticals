@@ -15,6 +15,32 @@ export const errorHandlerMiddleware = (
 ): void => {
   const correlationId = req.correlationId || 'unknown';
 
+  // Handle body-parser entity too large (payload limit exceeded)
+  if ((err as any).type === 'entity.too.large' || (err as any).status === 413) {
+    res.status(413).json({
+      success: false,
+      error: {
+        code: 'PAYLOAD_TOO_LARGE',
+        message: 'Request payload exceeds the allowable size limit of 100kb',
+        correlationId,
+      },
+    });
+    return;
+  }
+
+  // Handle malformed JSON request bodies
+  if (err instanceof SyntaxError && (err as any).status === 400 && 'body' in err) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'INVALID_JSON',
+        message: 'Malformed JSON payload in request body',
+        correlationId,
+      },
+    });
+    return;
+  }
+
   if (err instanceof AppError) {
     if (!err.isOperational) {
       logger.error(

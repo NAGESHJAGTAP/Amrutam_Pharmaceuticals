@@ -10,6 +10,8 @@ import {
 import { notificationService } from '../modules/notifications/notification.service.js';
 import { logger } from '../common/logging/logger.js';
 
+import { backgroundJobsTotal } from '../infrastructure/telemetry/metrics.js';
+
 /**
  * BullMQ Worker responsible for processing notification jobs asynchronously.
  */
@@ -42,10 +44,12 @@ export const createNotificationWorker = () => {
   );
 
   worker.on('completed', (job: Job) => {
+    backgroundJobsTotal.inc({ queue_name: QUEUE_NAMES.NOTIFICATIONS, status: 'completed' });
     logger.info({ jobId: job.id, eventType: job.data.eventType }, 'Notification job completed');
   });
 
   worker.on('failed', (job: Job | undefined, err: Error) => {
+    backgroundJobsTotal.inc({ queue_name: QUEUE_NAMES.NOTIFICATIONS, status: 'failed' });
     logger.error(
       {
         jobId: job?.id,

@@ -23,5 +23,25 @@ export const getConsultationByIdSchema = {
   }),
 };
 
+export const listMyBookingsSchema = {
+  query: z.object({
+    status: z.enum(['SCHEDULED', 'COMPLETED', 'CANCELLED']).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+  }).optional(),
+};
+
+export const getDoctorScheduleSchema = {
+  query: z.object({
+    status: z.enum(['SCHEDULED', 'COMPLETED', 'CANCELLED']).optional(),
+    startDate: z.string().datetime().optional(),
+    endDate: z.string().datetime().optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+  }).optional(),
+};
+
 export type BookConsultationInput = z.infer<typeof bookConsultationSchema.body>;
 export type CancelConsultationInput = z.infer<typeof cancelConsultationSchema.body>;
+export type ListMyBookingsQuery = z.infer<NonNullable<typeof listMyBookingsSchema.query>>;
+export type GetDoctorScheduleQuery = z.infer<NonNullable<typeof getDoctorScheduleSchema.query>>;

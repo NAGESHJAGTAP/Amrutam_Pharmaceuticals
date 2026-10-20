@@ -5,6 +5,9 @@ import { env } from './config/env.js';
 import { correlationIdMiddleware } from './common/middleware/correlation-id.middleware.js';
 import { httpLoggerMiddleware } from './common/middleware/http-logger.middleware.js';
 import { errorHandlerMiddleware } from './common/middleware/error-handler.middleware.js';
+import { prototypePollutionDefense, enforceContentType } from './common/middleware/security.middleware.js';
+import { generalRateLimiter } from './common/middleware/rate-limit.middleware.js';
+import { metricsMiddleware } from './common/middleware/metrics.middleware.js';
 import { NotFoundError } from './common/errors/app-error.js';
 import { healthRoutes } from './modules/health/health.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
@@ -18,13 +21,55 @@ import { paymentRoutes } from './modules/payments/payment.routes.js';
 export const createApp = (): Express => {
   const app = express();
 
-  // Security Headers
-  app.use(helmet());
+  // Reverse Proxy Trust Configuration
+  // Prevents spoofing of X-Forwarded-For headers while allowing legitimate proxy architectures
+  if (env.TRUST_PROXY === 'true') {
+    app.set('trust proxy', true);
+  } else if (env.TRUST_PROXY === 'false') {
+    app.set('trust proxy', false);
+  } else {
+    app.set('trust proxy', env.TRUST_PROXY);
+  }
 
-  // CORS Policy
+  // Enhanced Security Headers (Helmet)
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:'],
+          connectSrc: ["'self'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: 'same-origin' },
+      dnsPrefetchControl: { allow: false },
+      frameguard: { action: 'deny' },
+      hidePoweredBy: true,
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+      ieNoOpen: true,
+      noSniff: true,
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      xssFilter: true,
+    })
+  );
+
+  // CORS Policy with Whitelisting
+  const allowedOrigins =
+    env.CORS_ORIGIN === '*'
+      ? '*'
+      : env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+
   app.use(
     cors({
-      origin: env.CORS_ORIGIN.includes(',') ? env.CORS_ORIGIN.split(',') : env.CORS_ORIGIN,
+      origin: allowedOrigins,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
         'Content-Type',
@@ -34,21 +79,32 @@ export const createApp = (): Express => {
         'Idempotency-Key',
         'X-Amrutam-Signature',
         'X-Webhook-Signature',
+        'X-Test-Client-Id',
       ],
       credentials: true,
     })
   );
 
-  // Request Body Size Limit (prevents large payload DoS)
-  app.use(express.json({ limit: '1mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+  // Request Body Size Limit (restricted to 100kb to mitigate payload-flooding DoS)
+  app.use(express.json({ limit: '100kb' }));
+  app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+  // Defensive Input & Security Middleware
+  app.use(prototypePollutionDefense);
+  app.use(enforceContentType);
 
   // Request Tracing and Structured Logging
   app.use(correlationIdMiddleware);
   app.use(httpLoggerMiddleware);
+  app.use(metricsMiddleware);
+
+  // Health, Readiness and Metrics Endpoints (unthrottled for orchestrator probes and Prometheus scrapers)
+  app.use('/', healthRoutes);
+
+  // Global Distributed Rate Limiter for /api/v1 API Routes
+  app.use('/api/v1', generalRateLimiter);
 
   // Base API routes
-  app.use('/', healthRoutes);
   app.use('/api/v1', healthRoutes);
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/profiles', profileRoutes);

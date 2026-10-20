@@ -20,11 +20,13 @@ describe('Application Foundation & Health Probes', () => {
     expect(res.headers['x-request-id']).toBeDefined();
   });
 
-  it('GET /readyz returns 200 OK with READY status', async () => {
+  it('GET /readyz returns structured status with dependency checks', async () => {
     const res = await request(app).get('/readyz');
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe('READY');
+    expect([200, 503]).toContain(res.status);
+    expect(['READY', 'NOT_READY']).toContain(res.body.status);
     expect(res.body.checks.server).toBe('UP');
+    expect(res.body.checks).toHaveProperty('database');
+    expect(res.body.checks).toHaveProperty('redis');
   });
 
   it('GET /non-existent-route returns 404 NOT_FOUND structured error', async () => {
@@ -47,8 +49,12 @@ describe('Application Foundation & Health Probes', () => {
   afterAll(async () => {
     const { prisma } = await import('../../src/infrastructure/database/prisma.js');
     const { redis } = await import('../../src/infrastructure/cache/redis.js');
-    await prisma.$disconnect();
-    await redis.quit();
+    await prisma.$disconnect().catch(() => {});
+    if (redis.status === 'ready') {
+      await redis.quit().catch(() => {});
+    } else {
+      redis.disconnect();
+    }
   });
 });
 

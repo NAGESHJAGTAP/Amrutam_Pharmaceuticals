@@ -11,6 +11,7 @@ import {
 } from './prescription.schema.js';
 import { logger } from '../../common/logging/logger.js';
 import { ConsultationStatus } from '@prisma/client';
+import { prescriptionsFinalizedTotal } from '../../infrastructure/telemetry/metrics.js';
 
 export class PrescriptionService {
   /**
@@ -329,6 +330,8 @@ export class PrescriptionService {
           status: 'PENDING',
         },
       });
+
+      prescriptionsFinalizedTotal.inc({ status: 'success' });
 
       logger.info(
         { prescriptionId, consultationId: p.consultationId, actorUserId },

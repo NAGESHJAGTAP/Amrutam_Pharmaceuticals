@@ -3,6 +3,7 @@ import { queueManager } from '../queue/queue.manager.js';
 import { notificationService } from '../notifications/notification.service.js';
 import { logger } from '../../common/logging/logger.js';
 import { OutboxStatus } from '@prisma/client';
+import { outboxEventsDispatchedTotal, outboxBacklogCount } from '../../infrastructure/telemetry/metrics.js';
 
 export interface DispatchSummary {
   processedCount: number;
@@ -64,8 +65,10 @@ export class OutboxDispatcher {
         });
 
         summary.successCount++;
+        outboxEventsDispatchedTotal.inc({ event_type: event.eventType, status: 'success' });
       } catch (err: any) {
         summary.failureCount++;
+        outboxEventsDispatchedTotal.inc({ event_type: event.eventType, status: 'failure' });
         const nextRetry = (event.retryCount || 0) + 1;
         const newStatus = nextRetry >= 5 ? OutboxStatus.FAILED : OutboxStatus.PENDING;
 
@@ -88,6 +91,15 @@ export class OutboxDispatcher {
           },
         });
       }
+    }
+
+    try {
+      const pendingCount = await prisma.outboxEvent.count({
+        where: { status: OutboxStatus.PENDING },
+      });
+      outboxBacklogCount.set(pendingCount);
+    } catch {
+      // In case of non-blocking count error
     }
 
     return summary;

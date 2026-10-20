@@ -47,16 +47,27 @@ if (env.NODE_ENV !== 'production') {
   globalThis.prismaGlobal = prisma;
 }
 
+import { databaseHealthStatus } from '../telemetry/metrics.js';
+
 /**
- * Health check helper to verify database connectivity.
+ * Health check helper to verify database connectivity with bounded timeout (2500ms).
+ * Updates Prometheus dependency health metric and returns safe status metadata.
  */
-export const checkDatabaseHealth = async (): Promise<{ status: 'UP' | 'DOWN'; latencyMs: number }> => {
+export const checkDatabaseHealth = async (timeoutMs = 2500): Promise<{ status: 'UP' | 'DOWN'; latencyMs: number }> => {
   const start = Date.now();
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    return { status: 'UP', latencyMs: Date.now() - start };
-  } catch (error) {
-    logger.error({ error }, 'Database health check failed');
+    const queryPromise = prisma.$queryRaw`SELECT 1`;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Database health probe timed out after ' + timeoutMs + 'ms')), timeoutMs)
+    );
+
+    await Promise.race([queryPromise, timeoutPromise]);
+    const latencyMs = Date.now() - start;
+    databaseHealthStatus.set({ dependency: 'postgres' }, 1);
+    return { status: 'UP', latencyMs };
+  } catch (error: any) {
+    logger.error({ error: error.message }, 'Database health check failed');
+    databaseHealthStatus.set({ dependency: 'postgres' }, 0);
     return { status: 'DOWN', latencyMs: Date.now() - start };
   }
 };
