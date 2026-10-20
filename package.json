@@ -10,6 +10,7 @@
     "lint": "tsc --noEmit",
     "test": "vitest run --fileParallelism false",
     "test:watch": "vitest",
+    "seed": "tsx prisma/seed.ts",
     "client:dev": "npm --prefix client run dev",
     "client:build": "npm --prefix client run build",
     "client:lint": "npm --prefix client run lint"
