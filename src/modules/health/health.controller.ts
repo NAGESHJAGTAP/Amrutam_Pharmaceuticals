@@ -30,23 +30,35 @@ export class HealthController {
    * Never exposes credentials, connection URLs, or internal database stack traces.
    */
   public getReadiness = async (_req: Request, res: Response): Promise<void> => {
-    const [dbHealth, redisHealth] = await Promise.all([
-      checkDatabaseHealth(),
-      checkRedisHealth(),
-    ]);
+    try {
+      const [dbHealth, redisHealth] = await Promise.all([
+        checkDatabaseHealth().catch(() => ({ status: 'DOWN' as const, latencyMs: 0 })),
+        checkRedisHealth().catch(() => ({ status: 'DOWN' as const, latencyMs: 0 })),
+      ]);
 
-    const isHealthy = dbHealth.status === 'UP' && redisHealth.status === 'UP';
-    const statusCode = isHealthy ? 200 : env.NODE_ENV === 'production' ? 503 : 200;
+      const isHealthy = dbHealth.status === 'UP' && redisHealth.status === 'UP';
+      const statusCode = isHealthy ? 200 : env.NODE_ENV === 'production' ? 503 : 200;
 
-    res.status(statusCode).json({
-      status: isHealthy ? 'READY' : 'NOT_READY',
-      checks: {
-        server: 'UP',
-        database: dbHealth,
-        redis: redisHealth,
-      },
-      timestamp: new Date().toISOString(),
-    });
+      res.status(statusCode).json({
+        status: isHealthy ? 'READY' : 'NOT_READY',
+        checks: {
+          server: 'UP',
+          database: dbHealth,
+          redis: redisHealth,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch {
+      res.status(503).json({
+        status: 'NOT_READY',
+        checks: {
+          server: 'UP',
+          database: { status: 'DOWN', latencyMs: 0 },
+          redis: { status: 'DOWN', latencyMs: 0 },
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
   };
 
   /**

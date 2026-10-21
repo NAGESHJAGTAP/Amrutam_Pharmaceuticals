@@ -4,8 +4,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /usr/src/app
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
+# Install build dependencies including OpenSSL for Prisma
+RUN apk add --no-cache python3 make g++ openssl libc6-compat
 
 # Copy package manifests
 COPY package*.json ./
@@ -34,6 +34,9 @@ WORKDIR /usr/src/app
 
 ENV NODE_ENV=production
 ENV PORT=4000
+
+# Install OpenSSL runtime dependency for Prisma in Alpine
+RUN apk add --no-cache openssl libc6-compat
 
 # Create unprivileged user for security compliance (OWASP non-root)
 RUN addgroup -S nodejs -g 1001 && adduser -S nodejs -u 1001

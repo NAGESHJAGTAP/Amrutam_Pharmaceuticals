@@ -77,17 +77,28 @@ export const checkDatabaseHealth = async (timeoutMs = 2500): Promise<{ status: '
   }
   const start = Date.now();
   try {
-    const queryPromise = prisma.$queryRaw`SELECT 1`;
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Database health probe timed out after ' + timeoutMs + 'ms')), timeoutMs)
-    );
+    let timer: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Database health probe timed out after ' + timeoutMs + 'ms')), timeoutMs);
+    });
+
+    const queryPromise = (async () => {
+      try {
+        return await prisma.$queryRaw`SELECT 1`;
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    })();
+
+    // Absorb late rejections so it never manifests as an UnhandledPromiseRejection
+    queryPromise.catch(() => {});
 
     await Promise.race([queryPromise, timeoutPromise]);
     const latencyMs = Date.now() - start;
     databaseHealthStatus.set({ dependency: 'postgres' }, 1);
     return { status: 'UP', latencyMs };
   } catch (error: any) {
-    logger.error({ error: error.message }, 'Database health check failed');
+    logger.warn({ error: error?.message || String(error) }, 'Database health check failed');
     databaseHealthStatus.set({ dependency: 'postgres' }, 0);
     return { status: 'DOWN', latencyMs: Date.now() - start };
   }

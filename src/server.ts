@@ -51,12 +51,20 @@ const handleGracefulShutdown = async (signal: string) => {
 process.on('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => handleGracefulShutdown('SIGINT'));
 
-process.on('unhandledRejection', (reason) => {
-  logger.fatal({ reason }, 'Unhandled Promise Rejection detected');
-  process.exit(1);
+process.on('unhandledRejection', (reason: any) => {
+  logger.error(
+    {
+      error: reason?.message || String(reason),
+      stack: reason?.stack,
+    },
+    'Unhandled Promise Rejection detected'
+  );
+  if (env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
 });
 
 process.on('uncaughtException', (error) => {
-  logger.fatal({ error }, 'Uncaught Exception detected');
+  logger.fatal({ error: error?.message, stack: error?.stack }, 'Uncaught Exception detected');
   process.exit(1);
 });
