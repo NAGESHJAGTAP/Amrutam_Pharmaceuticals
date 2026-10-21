@@ -4,7 +4,7 @@
   "description": "Production-grade backend for Amrutam Telemedicine Platform",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "lint": "tsc --noEmit",
