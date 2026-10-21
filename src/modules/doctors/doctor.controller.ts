@@ -7,7 +7,10 @@ export class DoctorController {
       const result = await doctorService.searchDoctors(req.query as any);
       res.status(200).json({
         success: true,
-        data: result.doctors,
+        data: {
+          doctors: result.doctors,
+          pagination: result.pagination,
+        },
         pagination: result.pagination,
       });
     } catch (error) {

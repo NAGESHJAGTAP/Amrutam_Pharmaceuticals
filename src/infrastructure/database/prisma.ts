@@ -54,6 +54,9 @@ export const isDatabaseReachable = (): boolean => {
 };
 
 export const markDatabaseUnreachable = (durationMs = 120000): void => {
+  if (env.NODE_ENV === 'test') {
+    return;
+  }
   dbOfflineUntil = Date.now() + durationMs;
 };
 

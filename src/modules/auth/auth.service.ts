@@ -62,7 +62,7 @@ export class AuthService {
       input.phone && input.phone.trim() !== ''
         ? input.phone.trim().replace(/[\s-]/g, '')
         : null;
-    const targetRole: UserRole = input.role ? (input.role as UserRole) : UserRole.PATIENT;
+    const targetRole: UserRole = UserRole.PATIENT;
 
     if (isDatabaseReachable()) {
       try {
@@ -96,24 +96,9 @@ export class AuthService {
                   lastName: input.lastName.trim(),
                 },
               },
-              ...(targetRole === UserRole.DOCTOR
-                ? {
-                    doctor: {
-                      create: {
-                        licenseNumber: `MED-REG-${Math.floor(100000 + Math.random() * 900000)}`,
-                        specialty: 'Ayurveda & Integrative Medicine',
-                        experienceYears: 6,
-                        consultationFee: 500,
-                        currency: 'INR',
-                        verificationStatus: 'VERIFIED',
-                      },
-                    },
-                  }
-                : {}),
             },
             include: {
               profile: true,
-              doctor: true,
             },
           });
 

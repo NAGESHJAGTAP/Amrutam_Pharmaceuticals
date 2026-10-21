@@ -277,7 +277,8 @@ export class DoctorService {
           }),
         ]);
 
-        if (doctors && doctors.length > 0) {
+        const hasFilters = specialty || minExperience !== undefined || maxFee !== undefined || date;
+        if (doctors.length > 0 || (hasFilters && total === 0)) {
           return {
             doctors: doctors.map((doc) => ({
               id: doc.id,

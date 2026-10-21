@@ -57,7 +57,8 @@ export class ConsultationService {
   ) {
     const { doctorId, slotId, reason } = input;
 
-    if (isDatabaseReachable()) {
+    const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+    if (isDatabaseReachable() && isUuid(slotId) && isUuid(doctorId)) {
       try {
         return await prisma.$transaction(
           async (tx) => {
@@ -210,7 +211,7 @@ export class ConsultationService {
       }
     );
       } catch (err: any) {
-        if (err instanceof ConflictError || err instanceof BadRequestError) {
+        if (err instanceof ConflictError || err instanceof BadRequestError || err instanceof NotFoundError) {
           throw err;
         }
         markDatabaseUnreachable(30000);

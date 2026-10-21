@@ -270,7 +270,7 @@ export class PrescriptionService {
   /**
    * Retrieves a prescription by ID.
    */
-  public async getPrescriptionById(prescriptionId: string, _actorUserId?: string, _actorRole?: string) {
+  public async getPrescriptionById(prescriptionId: string, actorUserId?: string, actorRole?: string) {
     if (isDatabaseReachable() && isUuid(prescriptionId)) {
       try {
         const prescription = await prisma.prescription.findUnique({
@@ -293,9 +293,15 @@ export class PrescriptionService {
         });
 
         if (prescription) {
+          if (actorRole === 'PATIENT' && actorUserId && prescription.patientId !== actorUserId) {
+            throw new ForbiddenError('You do not have permission to view this prescription');
+          }
           return prescription;
         }
       } catch (err: any) {
+        if (err instanceof ForbiddenError) {
+          throw err;
+        }
         markDatabaseUnreachable(60000);
       }
     }
@@ -303,12 +309,18 @@ export class PrescriptionService {
     // Fallback to in-memory store
     const existing = this.syntheticPrescriptions.get(prescriptionId);
     if (existing) {
+      if (actorRole === 'PATIENT' && actorUserId && existing.patientId !== actorUserId) {
+        throw new ForbiddenError('You do not have permission to view this prescription');
+      }
       return existing;
     }
 
     // Default demo fallback if requested by ID
     const first = Array.from(this.syntheticPrescriptions.values())[0];
     if (first) {
+      if (actorRole === 'PATIENT' && actorUserId && first.patientId !== actorUserId) {
+        throw new ForbiddenError('You do not have permission to view this prescription');
+      }
       return { ...first, id: prescriptionId };
     }
 

@@ -10,8 +10,14 @@ export interface DoctorSearchParams {
 
 export const doctorsApi = {
   searchDoctors: async (params?: DoctorSearchParams): Promise<ApiResponse<Doctor[]>> => {
-    const res = await apiClient.get<ApiResponse<Doctor[]>>('/doctors', { params });
-    return res.data;
+    const res = await apiClient.get<any>('/doctors', { params });
+    const doctorList = Array.isArray(res.data?.data)
+      ? res.data.data
+      : res.data?.data?.doctors || [];
+    return {
+      ...res.data,
+      data: doctorList,
+    };
   },
 
   getDoctorById: async (doctorId: string): Promise<ApiResponse<Doctor>> => {
