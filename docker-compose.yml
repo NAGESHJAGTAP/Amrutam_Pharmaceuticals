@@ -1,6 +1,31 @@
 version: '3.8'
 
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: amrutam_api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://amrutam_user:amrutam_secret_pw@postgres:5432/amrutam_db?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-carebridge-access-secret-32-chars-minimum}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-carebridge-refresh-secret-32-chars-minimum}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-carebridge-webhook-secret-32-chars}
+      CORS_ORIGIN: "*"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - amrutam_network
+
   postgres:
     image: postgres:16
     container_name: amrutam_postgres
