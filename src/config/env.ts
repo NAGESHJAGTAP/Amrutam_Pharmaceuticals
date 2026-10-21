@@ -61,9 +61,9 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000), // 15 mins
-  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
+  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(1000), // 1000 requests per 15 mins for SPA apps
   RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),
-  TRUST_PROXY: z.string().default('false'),
+  TRUST_PROXY: z.string().default('true'),
 
   PAYMENT_WEBHOOK_SECRET: z.string().min(16).default('dev_payment_webhook_secret_amrutam_2026_safe'),
 

@@ -113,6 +113,10 @@ export const createLimiter = (options: {
       );
     },
     skip: (req: Request) => {
+      // Never rate limit health, readiness, or metrics probes
+      if (req.path === '/healthz' || req.path === '/readyz' || req.path === '/metrics') {
+        return true;
+      }
       if (env.NODE_ENV === 'test') {
         return req.headers['x-test-rate-limit'] !== 'true' && !req.headers['x-test-client-id'];
       }

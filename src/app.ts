@@ -23,8 +23,8 @@ export const createApp = (): Express => {
 
   // Reverse Proxy Trust Configuration
   // Prevents spoofing of X-Forwarded-For headers while allowing legitimate proxy architectures
-  if (env.TRUST_PROXY === 'true') {
-    app.set('trust proxy', true);
+  if (env.TRUST_PROXY === 'true' || env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
   } else if (env.TRUST_PROXY === 'false') {
     app.set('trust proxy', false);
   } else {
