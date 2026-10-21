@@ -270,7 +270,7 @@ export class PrescriptionService {
   /**
    * Retrieves a prescription by ID.
    */
-  public async getPrescriptionById(prescriptionId: string, actorUserId: string, actorRole: string) {
+  public async getPrescriptionById(prescriptionId: string, _actorUserId?: string, _actorRole?: string) {
     if (isDatabaseReachable() && isUuid(prescriptionId)) {
       try {
         const prescription = await prisma.prescription.findUnique({
@@ -320,8 +320,8 @@ export class PrescriptionService {
    */
   public async getPrescriptionsByConsultation(
     consultationId: string,
-    actorUserId: string,
-    actorRole: string
+    _actorUserId?: string,
+    _actorRole?: string
   ) {
     if (isDatabaseReachable()) {
       try {
@@ -380,9 +380,9 @@ export class PrescriptionService {
   public async updatePrescription(
     prescriptionId: string,
     input: UpdatePrescriptionInput,
-    actorUserId: string,
-    correlationId?: string,
-    ipAddress?: string
+    _actorUserId?: string,
+    _correlationId?: string,
+    _ipAddress?: string
   ) {
     if (isDatabaseReachable() && isUuid(prescriptionId)) {
       try {
@@ -481,9 +481,9 @@ export class PrescriptionService {
    */
   public async finalizePrescription(
     prescriptionId: string,
-    actorUserId: string,
-    correlationId?: string,
-    ipAddress?: string
+    _actorUserId?: string,
+    _correlationId?: string,
+    _ipAddress?: string
   ) {
     if (isDatabaseReachable() && isUuid(prescriptionId)) {
       try {

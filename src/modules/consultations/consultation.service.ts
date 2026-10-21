@@ -1116,7 +1116,7 @@ export class ConsultationService {
     return signal;
   }
 
-  public async getSignals(consultationId: string, since: number, currentUserId: string) {
+  public async getSignals(consultationId: string, since: number, _currentUserId?: string) {
     const list = this.signals.get(consultationId) || [];
     return list.filter((s) => s.timestamp > since);
   }

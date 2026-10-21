@@ -329,11 +329,12 @@ export class DoctorService {
       filtered = filtered.filter((doc) => doc.consultationFee <= Number(maxFee));
     }
 
-    if (query.sortBy === 'fee_asc') {
+    const sortKey = (query.sortBy as string) || '';
+    if (sortKey === 'fee_asc' || (query.sortBy === 'consultationFee' && orderDirection === 'asc')) {
       filtered.sort((a, b) => a.consultationFee - b.consultationFee);
-    } else if (query.sortBy === 'fee_desc') {
+    } else if (sortKey === 'fee_desc' || (query.sortBy === 'consultationFee' && orderDirection === 'desc')) {
       filtered.sort((a, b) => b.consultationFee - a.consultationFee);
-    } else if (query.sortBy === 'exp_desc') {
+    } else if (sortKey === 'exp_desc' || (query.sortBy === 'experienceYears' && orderDirection === 'desc')) {
       filtered.sort((a, b) => b.experienceYears - a.experienceYears);
     }
 
