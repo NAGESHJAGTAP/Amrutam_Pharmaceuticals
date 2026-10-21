@@ -1,0 +1,162 @@
+:root {
+  /* ==========================================================================
+     CareBridge Design System Tokens — Exact Healthcare Reference Palette
+     ========================================================================== */
+
+  /* Primary Brand Greens */
+  --cb-primary: #0B5D3B;
+  --cb-primary-dark: #084A30;
+  --cb-primary-hover: #084A30;
+  --cb-primary-active: #063824;
+  --cb-primary-light: #EAF5EF;
+  --cb-primary-subtle: #F2F8F4;
+  --cb-primary-border: #C8E3D4;
+
+  /* Secondary Healthcare Teals & Accents */
+  --cb-teal: #329CB3;
+  --cb-teal-dark: #277D90;
+  --cb-teal-light: #EAF6F9;
+  --cb-teal-border: #BCE2EB;
+
+  /* Soft Mint */
+  --cb-mint: #EAF5EF;
+  --cb-mint-dark: #D4ECDDF;
+  --cb-mint-border: #C8E3D4;
+
+  /* Backgrounds & Surfaces */
+  --cb-bg: #F7F9F7;
+  --cb-bg-subtle: #F0F4F1;
+  --cb-surface: #FFFFFF;
+  --cb-surface-muted: #F8FAF9;
+  --cb-surface-glass: rgba(255, 255, 255, 0.94);
+
+  /* Typography Colors */
+  --cb-text-primary: #17231D;
+  --cb-text-secondary: #68756E;
+  --cb-text-muted: #8E9C94;
+  --cb-text-tertiary: #B2BEB7;
+  --cb-text-inverse: #FFFFFF;
+
+  /* Borders & Dividers */
+  --cb-border: #E1E8E3;
+  --cb-border-subtle: #EDF2EE;
+  --cb-border-strong: #C8D4CC;
+
+  /* Semantic Health Status Colors */
+  --cb-success: #258553;
+  --cb-success-bg: #F0FDF4;
+  --cb-success-border: #BBF7D0;
+
+  --cb-warning: #B7791F;
+  --cb-warning-bg: #FFFBEB;
+  --cb-warning-border: #FDE68A;
+
+  --cb-danger: #C44747;
+  --cb-danger-bg: #FEF2F2;
+  --cb-danger-border: #FECACA;
+
+  --cb-info: #329CB3;
+  --cb-info-bg: #F0F9FF;
+  --cb-info-border: #BAE6FD;
+
+  /* Typography Scales */
+  --cb-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --cb-font-editorial: 'Playfair Display', Georgia, serif;
+
+  /* Radii */
+  --cb-radius-xs: 4px;
+  --cb-radius-sm: 8px;
+  --cb-radius-md: 12px;
+  --cb-radius-lg: 16px;
+  --cb-radius-xl: 24px;
+  --cb-radius-pill: 9999px;
+
+  /* Shadows (Subtle, Restrained Healthcare Shadows) */
+  --cb-shadow-xs: 0 1px 2px rgba(11, 93, 59, 0.04);
+  --cb-shadow-sm: 0 1px 3px rgba(11, 93, 59, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --cb-shadow-md: 0 4px 6px -1px rgba(11, 93, 59, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --cb-shadow-lg: 0 10px 15px -3px rgba(11, 93, 59, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --cb-shadow-xl: 0 20px 25px -5px rgba(11, 93, 59, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+  --cb-shadow-card: 0 2px 8px rgba(17, 35, 29, 0.05);
+
+  /* Transitions */
+  --cb-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --cb-transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --cb-transition-smooth: 350ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Layout Containers */
+  --cb-container-max: 1240px;
+  --cb-container-padding: 1.5rem;
+
+  /* Compatibility Aliases for components expecting tokens */
+  --am-primary: var(--cb-primary);
+  --am-primary-hover: var(--cb-primary-hover);
+  --am-primary-light: var(--cb-primary-light);
+  --am-primary-subtle: var(--cb-primary-subtle);
+  --am-primary-border: var(--cb-primary-border);
+  --am-bg: var(--cb-bg);
+  --am-bg-subtle: var(--cb-bg-subtle);
+  --am-surface: var(--cb-surface);
+  --am-surface-glass: var(--cb-surface-glass);
+  --am-surface-muted: var(--cb-surface-muted);
+  --am-text-primary: var(--cb-text-primary);
+  --am-text-secondary: var(--cb-text-secondary);
+  --am-text-muted: var(--cb-text-muted);
+  --am-border: var(--cb-border);
+  --am-border-subtle: var(--cb-border-subtle);
+  --am-border-strong: var(--cb-border-strong);
+  --am-success: var(--cb-success);
+  --am-warning: var(--cb-warning);
+  --am-danger: var(--cb-danger);
+  --am-info: var(--cb-info);
+  --am-radius-xs: var(--cb-radius-xs);
+  --am-radius-sm: var(--cb-radius-sm);
+  --am-radius-md: var(--cb-radius-md);
+  --am-radius-lg: var(--cb-radius-lg);
+  --am-radius-xl: var(--cb-radius-xl);
+  --am-radius-pill: var(--cb-radius-pill);
+  --am-shadow-xs: var(--cb-shadow-xs);
+  --am-shadow-sm: var(--cb-shadow-sm);
+  --am-shadow-md: var(--cb-shadow-md);
+  --am-shadow-lg: var(--cb-shadow-lg);
+  --am-shadow-xl: var(--cb-shadow-xl);
+  --am-shadow-card: var(--cb-shadow-card);
+  --am-font-sans: var(--cb-font-sans);
+  --am-font-editorial: var(--cb-font-editorial);
+  --am-container-max: var(--cb-container-max);
+
+  /* Universal Color Aliases */
+  --color-primary: var(--cb-primary);
+  --color-primary-dark: var(--cb-primary-dark);
+  --color-primary-light: var(--cb-primary-light);
+  --color-surface-tint: #f4f8f5;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #edf2f7;
+  --color-text-primary: #17231d;
+  --color-text-secondary: #64748b;
+  --color-text-tertiary: #94a3b8;
+  --color-danger: #ef4444;
+  --color-success: #166534;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-weight-normal: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+}

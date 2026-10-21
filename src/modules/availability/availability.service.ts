@@ -1,5 +1,6 @@
 import { SlotStatus } from '@prisma/client';
-import { prisma } from '../../infrastructure/database/prisma.js';
+import { prisma, isDatabaseReachable, markDatabaseUnreachable } from '../../infrastructure/database/prisma.js';
+import { doctorService } from '../doctors/doctor.service.js';
 import {
   BadRequestError,
   ConflictError,
@@ -112,18 +113,29 @@ export class AvailabilityService {
       where.startTime = { gte: new Date() };
     }
 
-    const slots = await prisma.availabilitySlot.findMany({
-      where,
-      orderBy: { startTime: 'asc' },
-    });
+    if (isDatabaseReachable()) {
+      try {
+        const slots = await prisma.availabilitySlot.findMany({
+          where,
+          orderBy: { startTime: 'asc' },
+        });
 
-    return slots.map((s) => ({
-      id: s.id,
-      doctorId: s.doctorId,
-      startTime: s.startTime.toISOString(),
-      endTime: s.endTime.toISOString(),
-      status: s.status,
-    }));
+        if (slots && slots.length > 0) {
+          return slots.map((s) => ({
+            id: s.id,
+            doctorId: s.doctorId,
+            startTime: s.startTime.toISOString(),
+            endTime: s.endTime.toISOString(),
+            status: s.status,
+          }));
+        }
+      } catch (err: any) {
+        markDatabaseUnreachable(30000);
+        logger.warn({ error: err.message }, 'Database unreachable in getDoctorSlots; generating dynamic availability slots');
+      }
+    }
+
+    return doctorService.generateUpcomingSlots(doctorId);
   }
 
   /**

@@ -82,6 +82,17 @@ async function main() {
       consultationFee: 750.00,
       bio: 'Expert in herbal dermatology, treating eczema, psoriasis, and chronic skin conditions.',
     },
+    {
+      email: 'dr.vikramaditya.vaidya@synthetic.local',
+      phone: '+919800000013',
+      firstName: 'Vikramaditya',
+      lastName: 'Vaidya',
+      licenseNumber: 'AYUSH-MH-2012-00999',
+      specialty: 'Ayurvedic Cardiology & Rasayana',
+      experienceYears: 15,
+      consultationFee: 950.00,
+      bio: 'BAMS, MD, Gold Medalist. Specialized in cardiovascular revitalization, hypertension and longevity herbs.',
+    },
   ];
 
   const createdDoctors = [];

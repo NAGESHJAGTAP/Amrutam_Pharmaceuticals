@@ -11,9 +11,12 @@
     "test": "vitest run --fileParallelism false",
     "test:watch": "vitest",
     "seed": "tsx prisma/seed.ts",
-    "client:dev": "npm --prefix client run dev",
-    "client:build": "npm --prefix client run build",
-    "client:lint": "npm --prefix client run lint"
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:lint": "npm --prefix frontend run lint",
+    "client:dev": "npm --prefix frontend run dev",
+    "client:build": "npm --prefix frontend run build",
+    "client:lint": "npm --prefix frontend run lint"
   },
   "keywords": [
     "telemedicine",

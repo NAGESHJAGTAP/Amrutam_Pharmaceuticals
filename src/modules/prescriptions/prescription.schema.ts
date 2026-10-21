@@ -13,44 +13,46 @@ export const medicationItemSchema = z.object({
 
 export const createPrescriptionSchema = {
   body: z.object({
-    consultationId: z.string().uuid('Invalid consultation UUID format'),
-    diagnosis: z.string().min(3, 'Diagnosis must be at least 3 characters').max(2000),
+    consultationId: z.string().min(1, 'Consultation ID is required'),
+    diagnosis: z.string().min(1).default('Ayurveda Clinical Assessment & Wellness Plan').optional(),
     medications: z
       .array(medicationItemSchema)
       .min(1, 'Prescription must contain at least one medication item'),
     advice: z.string().max(2000).optional(),
+    instructions: z.string().max(2000).optional(),
   }),
 };
 
 export const updatePrescriptionSchema = {
   params: z.object({
-    prescriptionId: z.string().uuid('Invalid prescription UUID format'),
+    prescriptionId: z.string().min(1, 'Prescription ID is required'),
   }),
   body: z.object({
-    diagnosis: z.string().min(3, 'Diagnosis must be at least 3 characters').max(2000).optional(),
+    diagnosis: z.string().min(1).max(2000).optional(),
     medications: z
       .array(medicationItemSchema)
       .min(1, 'Prescription must contain at least one medication item')
       .optional(),
     advice: z.string().max(2000).optional(),
+    instructions: z.string().max(2000).optional(),
   }),
 };
 
 export const finalizePrescriptionSchema = {
   params: z.object({
-    prescriptionId: z.string().uuid('Invalid prescription UUID format'),
+    prescriptionId: z.string().min(1, 'Prescription ID is required'),
   }),
 };
 
 export const getPrescriptionByIdSchema = {
   params: z.object({
-    prescriptionId: z.string().uuid('Invalid prescription UUID format'),
+    prescriptionId: z.string().min(1, 'Prescription ID is required'),
   }),
 };
 
 export const getPrescriptionsByConsultationSchema = {
   params: z.object({
-    consultationId: z.string().uuid('Invalid consultation UUID format'),
+    consultationId: z.string().min(1, 'Consultation ID is required'),
   }),
 };
 

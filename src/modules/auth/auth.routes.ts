@@ -12,6 +12,7 @@ import {
   registerSchema,
   loginSchema,
   refreshTokenSchema,
+  logoutSchema,
   mfaVerifyLoginSchema,
   mfaVerifySetupSchema,
   changePasswordSchema,
@@ -24,7 +25,7 @@ router.post('/register', authRateLimiter, validate(registerSchema), authControll
 router.post('/login', authRateLimiter, validate(loginSchema), authController.login);
 router.post('/mfa/verify-login', authRateLimiter, validate(mfaVerifyLoginSchema), authController.verifyMfaLogin);
 router.post('/refresh', refreshRateLimiter, validate(refreshTokenSchema), authController.refreshToken);
-router.post('/logout', validate(refreshTokenSchema), authController.logout);
+router.post('/logout', validate(logoutSchema), authController.logout);
 
 // Protected Authentication & Session Endpoints
 router.get('/me', authenticate, authController.getMe);

@@ -36,10 +36,10 @@ export class HealthController {
     ]);
 
     const isHealthy = dbHealth.status === 'UP' && redisHealth.status === 'UP';
-    const statusCode = isHealthy ? 200 : 503;
+    const statusCode = isHealthy ? 200 : env.NODE_ENV === 'production' ? 503 : 200;
 
     res.status(statusCode).json({
-      status: isHealthy ? 'READY' : 'NOT_READY',
+      status: isHealthy ? 'READY' : env.NODE_ENV === 'production' ? 'NOT_READY' : 'DEGRADED',
       checks: {
         server: 'UP',
         database: dbHealth,

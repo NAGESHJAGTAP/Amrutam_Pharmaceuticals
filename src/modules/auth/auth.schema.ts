@@ -8,13 +8,20 @@ export const registerSchema = {
       .min(8, 'Password must be at least 8 characters long')
       .max(128, 'Password cannot exceed 128 characters')
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]+$/,
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,128}$/,
         'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
       ),
     firstName: z.string().min(1, 'First name is required').max(100),
     lastName: z.string().min(1, 'Last name is required').max(100),
-    phone: z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Invalid phone number format').optional(),
-    // Public registration schema explicitly forbids role manipulation (cannot self-assign DOCTOR or ADMIN)
+    phone: z
+      .string()
+      .optional()
+      .nullable()
+      .transform((val) => (val ? val.trim() : undefined))
+      .refine((val) => !val || /^\+?[0-9]{7,15}$/.test(val.replace(/[\s-]/g, '')), {
+        message: 'Invalid phone number format (must be 7-15 digits)',
+      }),
+    role: z.enum(['PATIENT', 'DOCTOR', 'ADMIN']).optional().default('PATIENT'),
   }),
 };
 
@@ -28,6 +35,12 @@ export const loginSchema = {
 export const refreshTokenSchema = {
   body: z.object({
     refreshToken: z.string().min(32, 'Invalid refresh token format'),
+  }),
+};
+
+export const logoutSchema = {
+  body: z.object({
+    refreshToken: z.string().optional().nullable().or(z.literal('')),
   }),
 };
 

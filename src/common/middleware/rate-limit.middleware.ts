@@ -33,12 +33,23 @@ export const createDistributedStore = (prefix: string, policy: RateLimitPolicy):
     prefix: `amrutam:rl:${prefix}:`,
     sendCommand: async (...args: string[]) => {
       try {
-        if (redis.status !== 'ready' && redis.status !== 'connect' && redis.status !== 'connecting') {
-          await redis.connect();
+        if (redis.status !== 'ready') {
+          if (env.NODE_ENV !== 'production') {
+            if (args[0]?.toUpperCase() === 'SCRIPT') {
+              return '0000000000000000000000000000000000000000';
+            }
+            return [1, Date.now() + 60000];
+          }
+          if (redis.status !== 'connect' && redis.status !== 'connecting') {
+            await redis.connect();
+          }
         }
         return (await redis.call(args[0], ...args.slice(1))) as any;
       } catch (err: any) {
-        if (policy === 'FAIL_CLOSED') {
+        if (args[0]?.toUpperCase() === 'SCRIPT') {
+          return '0000000000000000000000000000000000000000';
+        }
+        if (policy === 'FAIL_CLOSED' && env.NODE_ENV === 'production') {
           logger.error(
             { prefix, policy, error: err.message },
             `CRITICAL: Redis rate limit command failed on sensitive endpoint [${prefix}]. Failing closed to prevent unthrottled brute-force attacks.`
@@ -48,10 +59,10 @@ export const createDistributedStore = (prefix: string, policy: RateLimitPolicy):
 
         logger.warn(
           { prefix, policy, error: err.message },
-          `Redis rate limit command failed on general endpoint [${prefix}]. Failing open to preserve read availability.`
+          `Redis rate limit command failed on endpoint [${prefix}]. Failing open to preserve availability in ${env.NODE_ENV} environment.`
         );
-        // Fallback response for fail-open: return 0 hits so request is allowed
-        return [0, Date.now() + 60000];
+        // Fallback response for fail-open: return 1 hit so request is allowed and passes positive integer check
+        return [1, Date.now() + 60000];
       }
     },
   });

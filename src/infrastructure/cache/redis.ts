@@ -12,6 +12,9 @@ export const redis: Redis =
     maxRetriesPerRequest: null,
     enableReadyCheck: true,
     retryStrategy(times) {
+      if (env.NODE_ENV !== 'production' && times > 3) {
+        return null;
+      }
       const delay = Math.min(times * 50, 2000);
       return delay;
     },
@@ -23,7 +26,9 @@ redis.on('connect', () => {
 });
 
 redis.on('error', (err) => {
-  logger.error({ err: err.message }, 'Redis client connection error');
+  if (env.NODE_ENV === 'production') {
+    logger.error({ err: err.message }, 'Redis client connection error');
+  }
 });
 
 if (env.NODE_ENV !== 'production') {
@@ -37,6 +42,10 @@ import { databaseHealthStatus, redisHealthStatus } from '../telemetry/metrics.js
  * Updates Prometheus dependency health metric and returns safe status metadata.
  */
 export const checkRedisHealth = async (timeoutMs = 2500): Promise<{ status: 'UP' | 'DOWN'; latencyMs: number }> => {
+  if (env.NODE_ENV !== 'production' && redis.status !== 'ready') {
+    redisHealthStatus.set(0);
+    return { status: 'DOWN', latencyMs: 0 };
+  }
   const start = Date.now();
   try {
     const pingPromise = (async () => {

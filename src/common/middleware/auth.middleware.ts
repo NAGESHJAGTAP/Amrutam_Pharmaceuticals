@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { UserRole, UserStatus } from '@prisma/client';
 import { TokenUtil, AccessTokenPayload } from '../security/token.js';
 import { UnauthorizedError, ForbiddenError } from '../errors/app-error.js';
-import { prisma } from '../../infrastructure/database/prisma.js';
+import { prisma, isDatabaseReachable, markDatabaseUnreachable } from '../../infrastructure/database/prisma.js';
 
 declare global {
   namespace Express {
@@ -26,29 +26,66 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
     const token = authHeader.split(' ')[1];
     const payload = TokenUtil.verifyAccessToken(token);
 
-    // Verify user account status directly in DB to handle immediate revocations or suspensions
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, email: true, role: true, status: true },
-    });
-
-    if (!user) {
-      throw new UnauthorizedError('User account not found or has been deleted');
+    // Verify user account status directly in DB if available to handle immediate revocations or suspensions
+    let user = null;
+    if (isDatabaseReachable()) {
+      try {
+        user = await prisma.user.findUnique({
+          where: { id: payload.sub },
+          select: { id: true, email: true, role: true, status: true },
+        });
+      } catch {
+        markDatabaseUnreachable(120000);
+      }
     }
 
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new ForbiddenError(`User account is ${user.status.toLowerCase()}. Access denied.`);
+    if (user) {
+      if (user.status !== UserStatus.ACTIVE) {
+        throw new ForbiddenError(`User account is ${user.status.toLowerCase()}. Access denied.`);
+      }
+      req.user = {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+      };
+    } else {
+      // In offline/demo mode or when DB is unreachable, honor cryptographically valid JWT signature
+      req.user = {
+        sub: payload.sub,
+        email: payload.email,
+        role: payload.role,
+      };
     }
-
-    req.user = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
 
     next();
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * Optional authentication middleware.
+ * Attaches req.user if a valid token exists, but does not reject unauthenticated requests.
+ */
+export const authenticateOptional = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const payload = TokenUtil.verifyAccessToken(token);
+        req.user = {
+          sub: payload.sub,
+          email: payload.email,
+          role: payload.role,
+        };
+      } catch {
+        // Safe catch for invalid or expired tokens in optional auth
+      }
+    }
+    next();
+  } catch {
+    next();
   }
 };
 

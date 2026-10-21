@@ -47,6 +47,20 @@ if (env.NODE_ENV !== 'production') {
   globalThis.prismaGlobal = prisma;
 }
 
+let dbOfflineUntil = 0;
+
+export const isDatabaseReachable = (): boolean => {
+  return Date.now() >= dbOfflineUntil;
+};
+
+export const markDatabaseUnreachable = (durationMs = 120000): void => {
+  dbOfflineUntil = Date.now() + durationMs;
+};
+
+export const markDatabaseReachable = (): void => {
+  dbOfflineUntil = 0;
+};
+
 import { databaseHealthStatus } from '../telemetry/metrics.js';
 
 /**
@@ -54,6 +68,10 @@ import { databaseHealthStatus } from '../telemetry/metrics.js';
  * Updates Prometheus dependency health metric and returns safe status metadata.
  */
 export const checkDatabaseHealth = async (timeoutMs = 2500): Promise<{ status: 'UP' | 'DOWN'; latencyMs: number }> => {
+  if (!isDatabaseReachable()) {
+    databaseHealthStatus.set({ dependency: 'postgres' }, 0);
+    return { status: 'DOWN', latencyMs: 0 };
+  }
   const start = Date.now();
   try {
     const queryPromise = prisma.$queryRaw`SELECT 1`;
