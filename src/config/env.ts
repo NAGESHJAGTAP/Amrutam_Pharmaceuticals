@@ -4,6 +4,18 @@ import { z } from 'zod';
 // Load environment variables from .env file
 dotenv.config();
 
+const sanitizeOptionalString = (val: unknown): string | undefined => {
+  if (typeof val !== 'string') return undefined;
+  let cleaned = val.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned.length > 0 ? cleaned : undefined;
+};
+
 /**
  * Environment configuration schema.
  * Ensures all required environment variables are present and valid before startup.
@@ -15,8 +27,8 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('*'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
-  DATABASE_URL: z.string().url().optional(),
-  REDIS_URL: z.string().url().optional(),
+  DATABASE_URL: z.preprocess(sanitizeOptionalString, z.string().optional()),
+  REDIS_URL: z.preprocess(sanitizeOptionalString, z.string().optional()),
 
   JWT_ACCESS_SECRET: z.string().min(16).default('dev_jwt_access_secret_do_not_use_in_production_32charsmin!'),
   JWT_REFRESH_SECRET: z.string().min(16).default('dev_jwt_refresh_secret_do_not_use_in_production_32charsmin!'),

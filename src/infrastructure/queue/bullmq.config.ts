@@ -7,16 +7,27 @@ import { env } from '../../config/env.js';
  */
 export const getRedisConnectionOptions = (): ConnectionOptions => {
   const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
-  const parsed = new URL(redisUrl);
+  try {
+    const parsed = new URL(redisUrl);
+    const isTls = parsed.protocol === 'rediss:';
 
-  return {
-    host: parsed.hostname || 'localhost',
-    port: parseInt(parsed.port || '6379', 10),
-    username: parsed.username || undefined,
-    password: parsed.password || undefined,
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-  };
+    return {
+      host: parsed.hostname || 'localhost',
+      port: parseInt(parsed.port || (isTls ? '6380' : '6379'), 10),
+      username: parsed.username ? decodeURIComponent(parsed.username) : undefined,
+      password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+      tls: isTls ? {} : undefined,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+    };
+  } catch {
+    return {
+      host: 'localhost',
+      port: 6379,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+    };
+  }
 };
 
 export const QUEUE_NAMES = {
