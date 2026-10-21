@@ -39,7 +39,7 @@ export class HealthController {
     const statusCode = isHealthy ? 200 : env.NODE_ENV === 'production' ? 503 : 200;
 
     res.status(statusCode).json({
-      status: isHealthy ? 'READY' : env.NODE_ENV === 'production' ? 'NOT_READY' : 'DEGRADED',
+      status: isHealthy ? 'READY' : 'NOT_READY',
       checks: {
         server: 'UP',
         database: dbHealth,

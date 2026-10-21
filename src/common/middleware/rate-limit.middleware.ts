@@ -34,18 +34,27 @@ export const createDistributedStore = (prefix: string, policy: RateLimitPolicy):
     sendCommand: async (...args: string[]) => {
       try {
         if (redis.status !== 'ready') {
-          if (env.NODE_ENV !== 'production') {
-            if (args[0]?.toUpperCase() === 'SCRIPT') {
-              return '0000000000000000000000000000000000000000';
-            }
-            return [1, Date.now() + 60000];
-          }
           if (redis.status !== 'connect' && redis.status !== 'connecting') {
-            await redis.connect();
+            try {
+              await redis.connect();
+            } catch {
+              // Redis connection failed, fallback below
+            }
           }
         }
-        return (await redis.call(args[0], ...args.slice(1))) as any;
+
+        if (redis.status === 'ready') {
+          return (await redis.call(args[0], ...args.slice(1))) as any;
+        }
+
+        if (args[0]?.toUpperCase() === 'SCRIPT') {
+          return '0000000000000000000000000000000000000000';
+        }
+        return [1, Date.now() + 60000];
       } catch (err: any) {
+        if (err?.message?.includes('NOSCRIPT')) {
+          throw err;
+        }
         if (args[0]?.toUpperCase() === 'SCRIPT') {
           return '0000000000000000000000000000000000000000';
         }
