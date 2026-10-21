@@ -22,20 +22,27 @@
 
 1. [Executive Summary](#1-executive-summary)
 2. [System Architecture & Data Flow](#2-system-architecture--data-flow)
-3. [Core Technical Innovations](#3-core-technical-innovations)
-   - [Concurrency Guard & Zero Double-Booking](#31-concurrency-guard--zero-double-booking)
-   - [Database-Backed Idempotency Engine](#32-database-backed-idempotency-engine)
-   - [Prescription Lifecycle & Clinical Immutability](#33-prescription-lifecycle--clinical-immutability)
-   - [Transactional Outbox Pattern & Background Workers](#34-transactional-outbox-pattern--background-workers)
-   - [Distributed Sliding-Window Rate Limiting](#35-distributed-sliding-window-rate-limiting)
-   - [Zero-Leakage Observability (Metrics, Traces, Logs)](#36-zero-leakage-observability)
-4. [Technology Stack](#4-technology-stack)
-5. [Database Schema & Core Models](#5-database-schema--core-models)
-6. [Quick Start & Setup Runbook](#6-quick-start--setup-runbook)
-7. [Running the Test Suite (103/103 Tests Passed)](#7-running-the-test-suite)
-8. [Local Monitoring & Grafana Dashboards](#8-local-monitoring--grafana-dashboards)
-9. [Interactive Web Experience](#9-interactive-web-experience)
-10. [Engineering Documentation Index](#10-engineering-documentation-index)
+3. [Role-Based Architecture & Multi-User Workflows](#3-role-based-architecture--multi-user-workflows)
+   - [Three-Tier User Roles Hierarchy](#31-three-tier-user-roles-hierarchy)
+   - [End-to-End Clinical Lifecycle Flow](#32-end-to-end-clinical-lifecycle-flow)
+   - [Doctor Role Deep-Dive](#33-doctor-role-deep-dive)
+   - [Patient Role Deep-Dive](#34-patient-role-deep-dive)
+   - [Administrator Role Deep-Dive](#35-administrator-role-deep-dive)
+   - [RBAC Authorization Matrix](#36-rbac-authorization-matrix)
+4. [Core Technical Innovations](#4-core-technical-innovations)
+   - [Concurrency Guard & Zero Double-Booking](#41-concurrency-guard--zero-double-booking)
+   - [Database-Backed Idempotency Engine](#42-database-backed-idempotency-engine)
+   - [Prescription Lifecycle & Clinical Immutability](#43-prescription-lifecycle--clinical-immutability)
+   - [Transactional Outbox Pattern & Background Workers](#44-transactional-outbox-pattern--background-workers)
+   - [Distributed Sliding-Window Rate Limiting](#45-distributed-sliding-window-rate-limiting)
+   - [Zero-Leakage Observability (Metrics, Traces, Logs)](#46-zero-leakage-observability)
+5. [Technology Stack](#5-technology-stack)
+6. [Database Schema & Core Models](#6-database-schema--core-models)
+7. [Quick Start & Setup Runbook](#7-quick-start--setup-runbook)
+8. [Running the Test Suite (103/103 Tests Passed)](#8-running-the-test-suite)
+9. [Local Monitoring & Grafana Dashboards](#9-local-monitoring--grafana-dashboards)
+10. [Interactive Web Experience](#10-interactive-web-experience)
+11. [Engineering Documentation Index](#11-engineering-documentation-index)
 
 ---
 
@@ -116,9 +123,178 @@ flowchart TB
 
 ---
 
-## 3. Core Technical Innovations
+## 3. Role-Based Architecture & Multi-User Workflows
 
-### 3.1 Concurrency Guard & Zero Double-Booking
+The Amrutam Telemedicine Platform operates on a **strict Role-Based Access Control (RBAC)** model with three distinct, privileged persona domains: **Patient**, **Doctor**, and **Administrator**. Every incoming HTTP request must pass through our authentication and authorization perimeter before reaching domain business logic.
+
+### 3.1 Three-Tier User Roles Hierarchy
+
+```mermaid
+flowchart LR
+    subgraph Roles [Three-Tier User Hierarchy]
+        direction TB
+        PatientRole["👤 PATIENT\n(Healthcare Seeker)"]
+        DoctorRole["🩺 DOCTOR\n(Medical Practitioner)"]
+        AdminRole["🛡️ ADMIN\n(Platform Compliance)"]
+    end
+
+    subgraph AuthLayer [Security & Role Gatekeeper]
+        AuthN["🔐 authenticate()\n(Verify JWT Signature & Expiry)"]
+        RBAC["🛡️ authorize([roles])\n(Enforce Role Boundaries)"]
+        Ownership["🔒 requireOwnershipOrAdmin()\n(Prevent BOLA / IDOR Tampering)"]
+    end
+
+    subgraph PatientScope [Patient Privileges]
+        P1["🔍 Search & Filter Doctors"]
+        P2["📅 Reserve Slots (Anti-Double-Booking)"]
+        P3["💳 Simulated Payment Checkout"]
+        P4["📄 View Own Medical Prescriptions"]
+    end
+
+    subgraph DoctorScope [Doctor Privileges]
+        D1["⏰ Manage Availability Slots (No Overlap)"]
+        D2["📋 Clinical Consultation Workspace"]
+        D3["✍️ Author & Draft Electronic Rx"]
+        D4["🔒 Finalize Rx (Permanent Legal Lock)"]
+    end
+
+    subgraph AdminScope [Administrator Privileges]
+        A1["✅ Verify Practitioner Credentials"]
+        A2["📈 Real-Time Platform Analytics"]
+        A3["📜 Search Immutable Audit Logs"]
+        A4["🔄 Monitor Queues & Disaster Recovery"]
+    end
+
+    PatientRole --> AuthN
+    DoctorRole --> AuthN
+    AdminRole --> AuthN
+    AuthN --> RBAC
+    RBAC --> Ownership
+
+    Ownership -->|"Role: PATIENT"| PatientScope
+    Ownership -->|"Role: DOCTOR"| DoctorScope
+    Ownership -->|"Role: ADMIN"| AdminScope
+```
+
+---
+
+### 3.2 End-to-End Clinical Lifecycle Flow
+
+The complete journey of a medical consultation from initial registration to legal prescription finalization involves synchronized state transitions across Patient, Doctor, and System:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Patient as 👤 Patient (Aarav)
+    actor Doctor as 🩺 Doctor (Dr. Aisha)
+    actor Admin as 🛡️ Admin
+    participant API as 🚀 Express API
+    participant DB as 🐘 PostgreSQL 16
+    participant Queue as 📨 BullMQ Worker
+
+    Note over Doctor,API: 1. Doctor Provisions Availability Slots
+    Doctor->>API: POST /api/v1/availability/slots (10:00 - 10:30 AM)
+    API->>DB: INSERT availability_slots (status = 'AVAILABLE')
+    API-->>Doctor: 🟢 Slot Published
+
+    Note over Patient,API: 2. Patient Searches & Books Doctor Slot
+    Patient->>API: GET /api/v1/doctors?specialty=Ayurveda&maxFee=700
+    API-->>Patient: 📋 Verified Doctor Directory
+    Patient->>API: POST /api/v1/consultations/book (Slot 101, Idempotency-Key)
+    API->>DB: BEGIN TX -> SELECT FOR UPDATE -> status = 'RESERVED'
+    API->>DB: INSERT consultations (status = 'SCHEDULED')
+    API->>DB: INSERT outbox_events ('consultation.booked')
+    API->>DB: COMMIT TX
+    API-->>Patient: 🟢 Consultation Scheduled (CON-2026-...)
+
+    Note over Queue,Doctor: 3. Async Transactional Event Processing
+    DB-->>Queue: Outbox Poller reads event (SKIP LOCKED)
+    Queue-->>Patient: 🔔 SMS/Email Notification: Appointment Confirmed
+    Queue-->>Doctor: 🔔 SMS/Email Notification: New Consultation Scheduled
+
+    Note over Doctor,Patient: 4. Clinical Consultation & Prescription Lifecycle
+    Doctor->>API: GET /api/v1/consultations (Inspect patient medical history)
+    Doctor->>API: POST /api/v1/prescriptions (Draft Ayurvedic regimen)
+    API->>DB: INSERT prescriptions (isFinalized = false, status = 'DRAFT')
+    API-->>Doctor: 📝 Prescription Draft Saved
+    
+    Doctor->>API: POST /api/v1/prescriptions/:id/finalize
+    API->>DB: BEGIN TX -> UPDATE prescriptions SET isFinalized = true
+    API->>DB: UPDATE consultations SET status = 'COMPLETED'
+    API->>DB: INSERT audit_logs ('PRESCRIPTION_FINALIZED')
+    API->>DB: COMMIT TX
+    API-->>Doctor: 🔒 Prescription Legally Locked & Immutable
+
+    Note over Patient,API: 5. Patient Downloads Finalized Prescription
+    Patient->>API: GET /api/v1/prescriptions/:id (Ownership verified)
+    API-->>Patient: 📄 Finalized Prescription & Care Plan
+
+    Note over Admin,API: 6. Platform Audit & Operational Analytics
+    Admin->>API: GET /api/v1/admin/analytics
+    API-->>Admin: 📊 Platform Metrics (Total Bookings, Revenue, Active Doctors)
+    Admin->>API: GET /api/v1/admin/audit-logs
+    API-->>Admin: 📜 Immutable Compliance Audit Trail (IP, Actor, Action)
+```
+
+---
+
+### 3.3 Doctor Role Deep-Dive (`DOCTOR`)
+Practitioners represent verified clinical providers within Amrutam's network:
+- **Credential Verification:** Medical doctors possess an authenticated profile including license registration (`AYUSH-MH-2015-...`), specialty, consultation fee, and verification status (`VERIFIED`).
+- **Availability Management:** Doctors define prospective consultation time windows. The backend runs interval collision algorithms rejecting overlapping start and end times for the same doctor.
+- **Clinical Workspace:** Doctors have privileged access to active, scheduled, and past consultations linked specifically to their practitioner ID.
+- **Electronic Prescriptions (e-Rx):** Doctors author structured prescriptions adhering to strict Zod clinical models (medication names, dosage, duration, instructions).
+- **Clinical Immutability Lock:** When the practitioner finalizes the prescription, `isFinalized` is set to `true`. From this moment onward, database constraints forbid any update or deletion, ensuring tamper-proof legal integrity.
+- **Multi-Factor Authentication (MFA):** Mandatory RFC 6238 TOTP challenge on login.
+
+---
+
+### 3.4 Patient Role Deep-Dive (`PATIENT`)
+Patients represent health seekers discovering and consulting Ayurvedic doctors:
+- **Public Registration:** Patients can onboard via `/api/v1/auth/register`. The backend unconditionally enforces `role: PATIENT` regardless of any client tampering.
+- **Practitioner Directory Search:** Multi-parameter search filtered by medical specialty, maximum consultation fee, years of clinical experience, and real-time slot availability.
+- **Race-Condition-Free Booking:** Patients reserve appointments backed by row-level locking (`SELECT FOR UPDATE`), guaranteeing zero double-bookings.
+- **Protected Medical Data (Anti-BOLA / IDOR):** Patients can **only** inspect their own medical records, consultations, and prescriptions. An unauthorized patient attempting to read another patient's prescription receives an immediate `HTTP 403 Forbidden`.
+- **Idempotency Protection:** Clients can safely retry bookings during intermittent network connectivity using the `Idempotency-Key` header without duplicate billing.
+
+---
+
+### 3.5 Administrator Role Deep-Dive (`ADMIN`)
+System administrators maintain platform governance, compliance, and clinical quality:
+- **Practitioner Credentialing:** Admins review, verify, and activate doctor profiles and medical practice credentials.
+- **Executive Analytics:** Real-time visibility into total consultations, platform gross revenue, registered patient count, and active practitioners.
+- **Compliance & Audit Inspection:** Complete access to the append-only `audit_logs` table tracking every security-sensitive action with actor ID, IP address, user agent, action timestamp, and correlation ID.
+- **Infrastructure Supervision:** Health probe inspection (`/healthz`, `/readyz`), BullMQ worker Dead Letter Queue monitoring, and disaster recovery execution.
+
+---
+
+### 3.6 RBAC Authorization Matrix
+
+| HTTP Endpoint | Target Operation | Required Role | Security Controls & Invariants |
+| :--- | :--- | :---: | :--- |
+| `POST /api/v1/auth/register` | User Registration | **PUBLIC** | Enforces `role: PATIENT`; Argon2id hash; 15 req/15m limit |
+| `POST /api/v1/auth/login` | User Authentication | **PUBLIC** | Issues 15m Access JWT + 7d Single-Use Refresh Token |
+| `POST /api/v1/auth/mfa/verify-login` | TOTP MFA Verification | **PUBLIC** | Validates 6-digit TOTP code before granting tokens |
+| `GET /api/v1/doctors` | Search Doctors Directory | **PUBLIC** | Route normalized; multi-parameter filter; pagination |
+| `GET /api/v1/doctors/:id` | View Doctor Profile & Slots | **PUBLIC** | Public profile viewing; includes upcoming available slots |
+| `PATCH /api/v1/doctors/:id` | Update Doctor Professional Info | **DOCTOR, ADMIN** | Doctor can only update their own profile; Admin has full access |
+| `POST /api/v1/availability/slots` | Create Availability Slot | **DOCTOR, ADMIN** | Verifies time order ($t_{start} < t_{end}$); rejects overlapping intervals |
+| `POST /api/v1/consultations/book` | Book Consultation Slot | **PATIENT, ADMIN** | `SELECT FOR UPDATE` row lock; `Idempotency-Key` check; Outbox emission |
+| `POST /api/v1/consultations/:id/cancel` | Cancel Consultation | **PATIENT, DOCTOR, ADMIN** | Caller must be assigned patient/doctor; resets slot to `AVAILABLE` |
+| `POST /api/v1/prescriptions` | Create Draft Prescription | **DOCTOR, ADMIN** | Only assigned doctor can draft; Zod medication schema |
+| `PATCH /api/v1/prescriptions/:id` | Update Draft Prescription | **DOCTOR, ADMIN** | Allowed only while `isFinalized: false`; rejects edits after finalization |
+| `POST /api/v1/prescriptions/:id/finalize` | Finalize Legal Prescription | **DOCTOR, ADMIN** | Sets `isFinalized: true`; transitions consultation to `COMPLETED`; locks permanently |
+| `GET /api/v1/prescriptions/:id` | View Prescription by ID | **PATIENT, DOCTOR, ADMIN** | BOLA Defense: Unrelated patients receive `HTTP 403 Forbidden` |
+| `GET /api/v1/admin/analytics` | View Platform Business KPIs | **ADMIN** | Aggregates revenue, active doctors, and completed consultations |
+| `GET /api/v1/admin/audit-logs` | Query Audit Trails | **ADMIN** | Searchable audit log with IP, correlation ID, and action history |
+| `GET /metrics` | Prometheus Metrics Scrape | **ADMIN / OPS** | Low-cardinality route templates; optional Bearer token protection |
+| `GET /readyz` | Deep Dependency Readiness Probe | **PUBLIC** | Checks PostgreSQL & Redis with 2500ms bounded timeout |
+
+---
+
+## 4. Core Technical Innovations
+
+### 4.1 Concurrency Guard & Zero Double-Booking
 When thousands of patients simultaneously compete for popular doctor slots, standard read-then-write logic causes disastrous double-bookings. We enforce a **two-tier defense**:
 1. **PostgreSQL Row-Level Locking:** During slot reservation, the transaction executes:
    ```sql
