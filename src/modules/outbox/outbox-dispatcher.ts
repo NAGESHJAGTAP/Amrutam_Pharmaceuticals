@@ -32,66 +32,73 @@ export class OutboxDispatcher {
       failureCount: 0,
     };
 
-    // 1. Transactional claim with SKIP LOCKED
-    const claimedEvents: any[] = await prisma.$transaction(async (tx) => {
-      const rows: any[] = await tx.$queryRaw`
-        SELECT * FROM "outbox_events"
-        WHERE "status" = 'PENDING'
-        ORDER BY "createdAt" ASC
-        LIMIT ${batchSize}
-        FOR UPDATE SKIP LOCKED;
-      `;
-      return rows;
-    });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // 1. Transactional claim with SKIP LOCKED
+        const claimedEvents: any[] = await tx.$queryRaw`
+          SELECT * FROM "outbox_events"
+          WHERE "status" = 'PENDING'
+          ORDER BY "createdAt" ASC
+          LIMIT ${batchSize}
+          FOR UPDATE SKIP LOCKED;
+        `;
 
-    if (claimedEvents.length === 0) {
-      return summary;
-    }
+        if (claimedEvents.length === 0) {
+          return summary;
+        }
 
-    summary.processedCount = claimedEvents.length;
-    logger.debug({ count: claimedEvents.length }, 'Claimed pending outbox events for dispatch');
+        summary.processedCount = claimedEvents.length;
+        logger.debug({ count: claimedEvents.length }, 'Claimed pending outbox events for dispatch');
 
-    // 2. Process each claimed event
-    for (const event of claimedEvents) {
-      try {
-        await this.processEvent(event);
+        // 2. Process each claimed event while holding SKIP LOCKED row lock
+        for (const event of claimedEvents) {
+          try {
+            await this.processEvent(event);
 
-        // Mark event as PUBLISHED
-        await prisma.outboxEvent.update({
-          where: { id: event.id },
-          data: {
-            status: OutboxStatus.PUBLISHED,
-          },
-        });
+            // Mark event as PUBLISHED
+            await tx.outboxEvent.update({
+              where: { id: event.id },
+              data: {
+                status: OutboxStatus.PUBLISHED,
+              },
+            });
 
-        summary.successCount++;
-        outboxEventsDispatchedTotal.inc({ event_type: event.eventType, status: 'success' });
-      } catch (err: any) {
-        summary.failureCount++;
-        outboxEventsDispatchedTotal.inc({ event_type: event.eventType, status: 'failure' });
-        const nextRetry = (event.retryCount || 0) + 1;
-        const newStatus = nextRetry >= 5 ? OutboxStatus.FAILED : OutboxStatus.PENDING;
+            summary.successCount++;
+            outboxEventsDispatchedTotal.inc({ event_type: event.eventType, status: 'success' });
+          } catch (err: any) {
+            summary.failureCount++;
+            outboxEventsDispatchedTotal.inc({ event_type: event.eventType, status: 'failure' });
+            const nextRetry = (event.retryCount || 0) + 1;
+            const newStatus = nextRetry >= 5 ? OutboxStatus.FAILED : OutboxStatus.PENDING;
 
-        logger.error(
-          {
-            eventId: event.id,
-            eventType: event.eventType,
-            retryCount: nextRetry,
-            error: err.message,
-          },
-          'Failed to dispatch outbox event'
-        );
+            logger.error(
+              {
+                eventId: event.id,
+                eventType: event.eventType,
+                retryCount: nextRetry,
+                error: err.message,
+              },
+              'Failed to dispatch outbox event'
+            );
 
-        await prisma.outboxEvent.update({
-          where: { id: event.id },
-          data: {
-            retryCount: nextRetry,
-            lastError: err.message,
-            status: newStatus,
-          },
-        });
+            await tx.outboxEvent.update({
+              where: { id: event.id },
+              data: {
+                retryCount: nextRetry,
+                lastError: err.message,
+                status: newStatus,
+              },
+            });
+          }
+        }
+
+        return summary;
+      },
+      {
+        timeout: 15000,
+        maxWait: 5000,
       }
-    }
+    );
 
     try {
       const pendingCount = await prisma.outboxEvent.count({
@@ -102,7 +109,7 @@ export class OutboxDispatcher {
       // In case of non-blocking count error
     }
 
-    return summary;
+    return result;
   }
 
   /**
