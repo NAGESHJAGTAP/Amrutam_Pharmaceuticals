@@ -61,15 +61,15 @@ export const createApp = (): Express => {
     })
   );
 
-  // CORS Policy with Whitelisting
-  const allowedOrigins =
+  // CORS Policy with Whitelisting (reflects origin when '*' so credentials: true works across domains)
+  const corsOriginOption =
     env.CORS_ORIGIN === '*'
-      ? '*'
+      ? true
       : env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
 
   app.use(
     cors({
-      origin: allowedOrigins,
+      origin: corsOriginOption,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
         'Content-Type',
