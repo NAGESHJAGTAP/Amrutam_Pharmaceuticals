@@ -6,20 +6,31 @@ declare global {
   var redisGlobal: Redis | undefined;
 }
 
-export const redis: Redis =
-  globalThis.redisGlobal ||
-  new Redis(env.REDIS_URL || 'redis://localhost:6379', {
-    maxRetriesPerRequest: null,
-    enableReadyCheck: true,
-    retryStrategy(times) {
-      if (env.NODE_ENV !== 'production' && times > 3) {
-        return null;
-      }
-      const delay = Math.min(times * 50, 2000);
-      return delay;
-    },
-    lazyConnect: true,
-  });
+const createRedisInstance = (): Redis => {
+  const connectionUrl = env.REDIS_URL || 'redis://localhost:6379';
+  try {
+    return new Redis(connectionUrl, {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: true,
+      retryStrategy(times) {
+        if (env.NODE_ENV !== 'production' && times > 3) {
+          return null;
+        }
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+      },
+      lazyConnect: true,
+    });
+  } catch (err: any) {
+    logger.error({ err: err?.message }, 'Failed to initialize Redis client; falling back to lazy dummy');
+    return new Redis('redis://localhost:6379', {
+      maxRetriesPerRequest: null,
+      lazyConnect: true,
+    });
+  }
+};
+
+export const redis: Redis = globalThis.redisGlobal || createRedisInstance();
 
 redis.on('connect', () => {
   logger.info('Connected to Redis server');
