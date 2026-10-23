@@ -96,11 +96,10 @@ export const RegisterPage: React.FC = () => {
       }}
     >
       <div
-        className="cb-card"
+        className="cb-card cb-auth-card"
         style={{
           maxWidth: '520px',
           width: '100%',
-          padding: '2.5rem',
           background: '#ffffff',
           borderRadius: 'var(--cb-radius-xl)',
           border: '1px solid var(--cb-border)',

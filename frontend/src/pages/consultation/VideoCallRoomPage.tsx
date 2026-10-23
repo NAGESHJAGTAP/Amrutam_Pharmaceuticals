@@ -986,19 +986,10 @@ export const VideoCallRoomPage: React.FC = () => {
 
           {/* Self View (Picture-in-Picture floating tile) */}
           <div
+            className="cb-call-pip-tile"
             style={{
-              position: 'absolute',
-              bottom: '1.5rem',
               right: activeDrawer !== 'none' ? '380px' : '1.5rem',
-              width: '240px',
-              height: '145px',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              backgroundColor: '#0f172a',
               border: isSpeakingLocal ? '2px solid #10b981' : '2px solid rgba(52, 211, 153, 0.4)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.7)',
-              transition: 'all 200ms ease',
-              zIndex: 10,
             }}
           >
             <video
@@ -1057,17 +1048,7 @@ export const VideoCallRoomPage: React.FC = () => {
 
         {/* Side Drawers (Chat or Clinical Notes) */}
         {activeDrawer === 'chat' && (
-          <aside
-            style={{
-              width: '360px',
-              backgroundColor: '#0f172a',
-              borderLeft: '1px solid rgba(255,255,255,0.08)',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '-4px 0 16px rgba(0,0,0,0.5)',
-              zIndex: 20,
-            }}
-          >
+          <aside className="cb-call-side-drawer">
             <div
               style={{
                 padding: '1rem',
@@ -1187,14 +1168,8 @@ export const VideoCallRoomPage: React.FC = () => {
         {/* Clinical Notes Drawer (Especially useful for Doctor) */}
         {activeDrawer === 'notes' && (
           <aside
+            className="cb-call-side-drawer"
             style={{
-              width: '380px',
-              backgroundColor: '#0f172a',
-              borderLeft: '1px solid rgba(255,255,255,0.08)',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '-4px 0 16px rgba(0,0,0,0.5)',
-              zIndex: 20,
               padding: '1.25rem',
               overflowY: 'auto',
             }}
@@ -1293,19 +1268,7 @@ export const VideoCallRoomPage: React.FC = () => {
       </div>
 
       {/* Floating Bottom Action Bar */}
-      <footer
-        style={{
-          height: '76px',
-          backgroundColor: '#0f172a',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '1rem',
-          padding: '0 1.5rem',
-          position: 'relative',
-        }}
-      >
+      <footer className="cb-call-controls-bar">
         {/* Mic Toggle */}
         <button
           onClick={toggleMute}

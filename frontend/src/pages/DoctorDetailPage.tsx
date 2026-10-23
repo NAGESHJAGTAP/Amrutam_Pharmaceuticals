@@ -199,18 +199,7 @@ export const DoctorDetailPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '1rem',
-                    padding: '1.25rem',
-                    backgroundColor: 'var(--am-bg)',
-                    borderRadius: 'var(--am-radius-md)',
-                    marginBottom: '1.5rem',
-                    textAlign: 'center',
-                  }}
-                >
+                <div className="cb-doc-stats-grid">
                   <div>
                     <span style={{ fontSize: '0.75rem', color: 'var(--am-text-muted)', display: 'block' }}>Clinical Experience</span>
                     <strong style={{ fontSize: '1.0625rem' }}>{doctor.experienceYears}+ Years</strong>

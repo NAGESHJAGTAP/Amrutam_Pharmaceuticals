@@ -84,9 +84,19 @@
   --cb-transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
   --cb-transition-smooth: 350ms cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Layout Containers */
+  /* Layout Containers & Responsive Spacing */
   --cb-container-max: 1240px;
-  --cb-container-padding: 1.5rem;
+  --cb-container-narrow: 840px;
+  --cb-container-padding: clamp(1rem, 3.5vw, 1.5rem);
+
+  /* iOS / Mobile Notch & Home Bar Safe Areas */
+  --cb-safe-top: env(safe-area-inset-top, 0px);
+  --cb-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --cb-safe-left: env(safe-area-inset-left, 0px);
+  --cb-safe-right: env(safe-area-inset-right, 0px);
+
+  /* Touch Target Standards (Apple Human Interface Guidelines & Material 3) */
+  --cb-touch-target-min: 44px;
 
   /* Compatibility Aliases for components expecting tokens */
   --am-primary: var(--cb-primary);

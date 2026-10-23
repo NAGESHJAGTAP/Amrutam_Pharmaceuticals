@@ -6,6 +6,25 @@
    CareBridge Global & Layout Styles
    ========================================================================== */
 
+/* Base Reset Enhancements for Fluid Multi-Device Responsiveness */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+}
+
 /* App Shell Layout */
 .cb-app-layout,
 .am-app-layout {
@@ -16,11 +35,15 @@
   color: var(--cb-text-primary);
   font-family: var(--cb-font-sans);
   -webkit-font-smoothing: antialiased;
+  position: relative;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .cb-main-content,
 .am-main-content {
   flex: 1;
+  width: 100%;
 }
 
 /* Container */
@@ -45,6 +68,9 @@
   border-bottom: 1px solid var(--cb-border);
   box-shadow: var(--cb-shadow-xs);
   transition: all var(--cb-transition-base);
+  padding-top: var(--cb-safe-top);
+  padding-left: var(--cb-safe-left);
+  padding-right: var(--cb-safe-right);
 }
 
 .cb-navbar-inner {
@@ -392,27 +418,52 @@
   background: var(--cb-danger-bg) !important;
 }
 
-/* Mobile Toggle */
+/* Mobile Toggle (Optimized for Apple & Android Touch Targets) */
 .cb-mobile-toggle {
   display: none;
   background: transparent;
   border: none;
   color: var(--cb-text-primary);
   cursor: pointer;
-  padding: 0.4rem;
+  padding: 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--cb-radius-md);
+  transition: background var(--cb-transition-fast);
+}
+
+.cb-mobile-toggle:hover {
+  background: var(--cb-mint);
 }
 
 .cb-mobile-drawer {
   background: var(--cb-surface);
   border-bottom: 1px solid var(--cb-border);
   box-shadow: var(--cb-shadow-lg);
-  padding: 1.5rem;
+  padding: 1.25rem var(--cb-container-padding) calc(1.5rem + var(--cb-safe-bottom)) var(--cb-container-padding);
+  max-height: calc(100vh - 74px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: cb-drawer-slide 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cb-drawer-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .cb-mobile-nav {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .cb-mobile-link {
@@ -422,8 +473,17 @@
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.4rem 0;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--cb-radius-md);
+  transition: all var(--cb-transition-fast);
+  min-height: 44px;
+}
+
+.cb-mobile-link:hover,
+.cb-mobile-link.active {
+  background: var(--cb-mint);
+  color: var(--cb-primary);
 }
 
 .cb-mobile-auth-buttons {
@@ -435,6 +495,14 @@
   border-top: 1px solid var(--cb-border-subtle);
 }
 
+.cb-mobile-auth-buttons .cb-btn-login,
+.cb-mobile-auth-buttons .cb-btn-signup {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ==========================================================================
    CareBridge Footer (Section 2.I)
    ========================================================================== */
@@ -443,7 +511,9 @@
   color: #C8D4CE;
   border-top: 1px solid #1C2E25;
   padding-top: 4.5rem;
-  padding-bottom: 2rem;
+  padding-bottom: calc(2.5rem + var(--cb-safe-bottom));
+  padding-left: var(--cb-safe-left);
+  padding-right: var(--cb-safe-right);
   margin-top: auto;
 }
 
@@ -634,31 +704,183 @@
   color: #C8D4CE;
 }
 
-/* Responsive Media Queries */
-@media (max-width: 1024px) {
-  .cb-footer-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+/* ==========================================================================
+   Comprehensive Multi-Device Responsive System
+   Targeting: Laptops, Desktops, iPads/Tablets, iOS/iPhones, Android Mobile
+   ========================================================================== */
+
+/* Universal Touch & Scrolling Optimizations */
+[style*="overflow-x: auto"],
+[style*="overflow-y: auto"],
+.cb-table-responsive,
+.am-table-responsive,
+.cb-specialty-pills-wrap {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+/* iOS Safari Automatic Zoom Defeat:
+   Enforces min 16px font on inputs to prevent iOS from forcefully zooming the viewport */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  select,
+  textarea,
+  .form-input,
+  .am-input,
+  .cb-nav-search-input,
+  .cb-hero-search-input,
+  .cb-newsletter-input {
+    font-size: 16px !important;
   }
 }
 
+/* --- Device Breakpoint 1: Tablets & Small Laptops (max-width: 1024px) --- */
+@media (max-width: 1024px) {
+  .cb-footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 2.25rem;
+  }
+
+  .cb-navbar-inner {
+    height: 70px;
+  }
+}
+
+/* --- Device Breakpoint 2: Tablet Portrait / Nav Collapse (max-width: 900px) --- */
 @media (max-width: 900px) {
   .cb-nav-menu {
     display: none;
   }
+
   .cb-mobile-toggle {
     display: flex;
   }
+
+  .cb-navbar-actions {
+    gap: 0.65rem;
+  }
 }
 
+/* --- Device Breakpoint 3: Standard Mobile & Small Tablets / iPads (max-width: 768px) --- */
+@media (max-width: 768px) {
+  .cb-navbar-inner {
+    height: 64px;
+  }
+
+  .cb-logo-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .cb-logo-title {
+    font-size: 1.2rem;
+  }
+
+  .cb-nav-search-form {
+    width: min(calc(100vw - 32px), 320px);
+    right: -10px;
+    top: -4px;
+  }
+
+  .cb-user-info-text {
+    display: none; /* Keep clean avatar only on mobile navbar to prevent layout cramping */
+  }
+
+  .cb-user-pill-btn {
+    padding: 0.25rem 0.4rem;
+  }
+
+  .cb-auth-buttons .cb-btn-login {
+    padding: 0.45rem 0.95rem;
+    font-size: 0.85rem;
+  }
+
+  .cb-auth-buttons .cb-btn-signup {
+    padding: 0.45rem 1.05rem;
+    font-size: 0.85rem;
+  }
+
+  .cb-footer {
+    padding-top: 3.5rem;
+  }
+}
+
+/* --- Device Breakpoint 4: Mobile Phones (max-width: 640px) --- */
 @media (max-width: 640px) {
   .cb-footer-grid {
     grid-template-columns: 1fr;
     gap: 2rem;
   }
+
   .cb-footer-bottom {
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
     text-align: center;
+  }
+
+  .cb-footer-legal-links {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .cb-dropdown-menu {
+    width: min(290px, calc(100vw - 2rem));
+    right: 0;
+  }
+}
+
+/* --- Device Breakpoint 5: Compact Phones (iPhone SE, Galaxy Mini, <= 480px) --- */
+@media (max-width: 480px) {
+  .cb-navbar-inner {
+    height: 58px;
+  }
+
+  .cb-logo {
+    gap: 0.5rem;
+  }
+
+  .cb-logo-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--cb-radius-sm);
+  }
+
+  .cb-logo-title {
+    font-size: 1.075rem;
+  }
+
+  .cb-logo-tagline {
+    display: none; /* Hide subtitle tagline on ultra-compact mobile to give actions breathing room */
+  }
+
+  .cb-auth-buttons {
+    gap: 0.4rem;
+  }
+
+  .cb-auth-buttons .cb-btn-login {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .cb-auth-buttons .cb-btn-signup {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .cb-nav-search-form {
+    width: calc(100vw - 24px);
+    right: -8px;
+  }
+
+  .cb-newsletter-form {
+    width: 100%;
   }
 }

@@ -542,3 +542,187 @@
 .modal-body {
   padding: 20px 24px;
 }
+
+/* ==========================================================================
+   Responsive Component Overrides & Media Queries
+   ========================================================================== */
+
+/* Universal Responsive Grids */
+.am-hero-grid {
+  display: grid;
+  align-items: flex-start;
+}
+
+@media (max-width: 960px) {
+  .am-hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+}
+
+/* Doctor Stats Summary Card (Experience, Fee, License) */
+.cb-doc-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  padding: 1.25rem;
+  background-color: var(--am-bg, #f7f9f7);
+  border-radius: var(--am-radius-md, 12px);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .cb-doc-stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    padding: 1rem !important;
+  }
+}
+
+/* Auth Cards on Mobile */
+.cb-auth-card {
+  max-width: 490px;
+  width: 100%;
+  padding: 2.5rem;
+  background: #ffffff;
+  border-radius: var(--cb-radius-xl, 20px);
+  border: 1px solid var(--cb-border, #e1e8e3);
+  box-shadow: var(--cb-shadow-lg);
+}
+
+@media (max-width: 540px) {
+  .cb-auth-card {
+    padding: 1.5rem 1.15rem !important;
+    border-radius: var(--cb-radius-lg, 14px) !important;
+  }
+}
+
+/* Universal Modals on Mobile & Tablets */
+@media (max-width: 640px) {
+  .modal-backdrop,
+  .am-modal-backdrop {
+    padding: 0.75rem;
+  }
+
+  .modal,
+  .am-modal-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 14px !important;
+    max-height: 90vh !important;
+  }
+
+  .modal-header,
+  .am-modal-header {
+    padding: 1rem 1.25rem !important;
+  }
+
+  .modal-body,
+  .am-modal-body {
+    padding: 1rem 1.25rem !important;
+  }
+
+  .modal-footer,
+  .am-modal-footer {
+    padding: 0.85rem 1.25rem !important;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .modal-footer .btn,
+  .modal-footer .am-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Responsive Table Wrapper with Touch Momentum */
+.am-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--am-border, #e1e8e3);
+  border-radius: var(--am-radius-md, 12px);
+}
+
+/* Minimum Touch Target Heights */
+@media (max-width: 640px) {
+  .btn,
+  .am-btn,
+  .cb-btn {
+    min-height: 42px;
+  }
+}
+
+/* ==========================================================================
+   Video Consultation Room Mobile & iOS Responsive Classes
+   ========================================================================== */
+.cb-call-side-drawer {
+  width: 360px;
+  background-color: #0f172a;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+
+@media (max-width: 768px) {
+  .cb-call-side-drawer {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    z-index: 40 !important;
+  }
+}
+
+.cb-call-pip-tile {
+  position: absolute;
+  bottom: 1.5rem;
+  width: 240px;
+  height: 145px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #0f172a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  transition: all 200ms ease;
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .cb-call-pip-tile {
+    width: clamp(110px, 30vw, 160px) !important;
+    height: auto !important;
+    aspect-ratio: 16/9 !important;
+    bottom: 1rem !important;
+    right: 1rem !important;
+  }
+}
+
+.cb-call-controls-bar {
+  min-height: 76px;
+  background-color: #0f172a;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem calc(0.5rem + var(--cb-safe-bottom, 0px)) 1rem;
+  position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  .cb-call-controls-bar {
+    gap: 0.5rem;
+    padding: 0.5rem 0.5rem calc(0.5rem + var(--cb-safe-bottom, 0px)) 0.5rem;
+    justify-content: space-around;
+  }
+  .cb-call-control-btn {
+    width: 42px !important;
+    height: 42px !important;
+  }
+}

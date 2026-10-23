@@ -142,7 +142,7 @@ export const DoctorAvailabilityPage: React.FC = () => {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-6)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'var(--space-6)' }}>
         
         {/* Create Slot Card */}
         <div className="card" style={{ padding: 'var(--space-6)' }}>
